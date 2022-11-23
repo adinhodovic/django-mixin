@@ -1,0 +1,41 @@
+---
+rule_files:
+  - prometheus-alerts.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'django_task_failed_total{job="django", name="failed_task"}'
+        values: '0 1'
+      - series: 'django_task_failed_total{job="django", name="successful_task"}'
+        values: '0 0'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: CeleryTaskFailed
+        exp_alerts:
+          - exp_labels:
+              job: django
+              severity: warning
+              name: failed_task
+            exp_annotations:
+              summary: 'A Celery task has failed to complete.'
+              description: 'The task failed_task failed to complete.'
+  - interval: 1m
+    input_series:
+      - series: 'django_worker_up{job="django", hostname="down"}'
+        values: '1 0'
+      - series: 'django_worker_up{job="django", hostname="up"}'
+        values: '1 1'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: CeleryWorkerDown
+        exp_alerts:
+          - exp_labels:
+              job: django
+              severity: warning
+              hostname: down
+            exp_annotations:
+              summary: 'A Celery worker is offline.'
+              description: 'The Celery worker down is offline.'

@@ -1,18 +1,18 @@
 "groups":
 - "name": "django"
   "rules":
-  - "alert": "CeleryTaskFailed"
+  - "alert": "DjangoTaskFailed"
     "annotations":
       "description": "The task {{ $labels.name }} failed to complete."
-      "summary": "A Celery task has failed to complete."
+      "summary": "A Django task has failed to complete."
     "expr": |
       increase(django_task_failed_total{job="django"}[10m]) > 1
     "labels":
       "severity": "warning"
-  - "alert": "CeleryWorkerDown"
+  - "alert": "DjangoWorkerDown"
     "annotations":
-      "description": "The Celery worker {{ $labels.hostname }} is offline."
-      "summary": "A Celery worker is offline."
+      "description": "The Django worker {{ $labels.hostname }} is offline."
+      "summary": "A Django worker is offline."
     "expr": |
       django_worker_up{job="django"} == 0
     "labels":

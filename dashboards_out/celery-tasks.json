@@ -4,7 +4,7 @@
    "annotations": {
       "list": [ ]
    },
-   "description": "A dashboard that monitors Celery. It is created using the Celery-mixin for the the (Celery-exporter)[https://github.com/danihodovic/django-exporter]",
+   "description": "A dashboard that monitors Django. It is created using the Django-mixin for the the (Django-exporter)[https://github.com/danihodovic/django-exporter]",
    "editable": false,
    "gnetId": null,
    "graphTooltip": 0,
@@ -76,7 +76,7 @@
                "refId": "A"
             }
          ],
-         "title": "Celery Workers",
+         "title": "Django Workers",
          "transparent": false,
          "type": "stat"
       },
@@ -852,7 +852,7 @@
       ]
    },
    "timezone": "utc",
-   "title": "Celery / Tasks",
+   "title": "Django / Tasks",
    "uid": "django-exporter",
    "version": 0
 }

@@ -133,7 +133,7 @@ local statPanel = grafana.statPanel;
       .addTarget(prometheus.target(requestVolumeQuery))
       .addThresholds([
         { color: 'red', value: 0 },
-        { color: 'green', value: 0.1 },
+        { color: 'green', value: 0.001 },
       ]),
 
     local requestSuccessRateQuery = |||
@@ -201,7 +201,7 @@ local statPanel = grafana.statPanel;
         ) by (job, le)
       )
     ||| % $._config,
-    local requestLatencyP95SummaryTable =
+    local requestLatencyP95SummaryStatPanel =
       statPanel.new(
         'Average Request Latency (P95) [5m]',
         datasource='$datasource',
@@ -210,9 +210,9 @@ local statPanel = grafana.statPanel;
       )
       .addTarget(prometheus.target(requestLatencyP95SummaryQuery))
       .addThresholds([
-        { color: 'red', value: 5000 },
-        { color: 'yellow', value: 2500 },
         { color: 'green', value: 0 },
+        { color: 'yellow', value: 2500 },
+        { color: 'red', value: 5000 },
       ]),
 
     local requestLatencyP50Query = |||
@@ -276,7 +276,14 @@ local statPanel = grafana.statPanel;
       round(
         sum(
           irate(
-            django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method", status=~"$status"}[1d]
+            django_http_responses_total_by_status_view_method_total{
+              namespace=~"$namespace",
+              job=~"$job",
+              view=~"$view",
+              view!~"%(djangoIgnoredViews)s",
+              method=~"$method",
+              status=~"$status"
+            }[5m]
           ) > 0
         ) by (status, view), 0.001
       )
@@ -305,7 +312,11 @@ local statPanel = grafana.statPanel;
       round(
         sum by (templatename) (
           increase(
-            django_http_responses_total_by_templatename_total{namespace=~"$namespace", job=~"$job", templatename!~"%(djangoIgnoredTemplates)s"}[1w]
+            django_http_responses_total_by_templatename_total{
+              namespace=~"$namespace",
+              job=~"$job",
+              templatename!~"%(djangoIgnoredTemplates)s"
+            }[1w]
           ) > 0
         )
       )
@@ -339,7 +350,13 @@ local statPanel = grafana.statPanel;
         topk(10,
           sum by (view) (
             increase(
-              django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method"}[1w]
+              django_http_responses_total_by_status_view_method_total{
+                namespace=~"$namespace",
+                job=~"$job",
+                view=~"$view",
+                view!~"%(djangoIgnoredViews)s",
+                method=~"$method"
+              }[1w]
             ) > 0
           )
         )
@@ -373,7 +390,14 @@ local statPanel = grafana.statPanel;
         topk(10,
           sum by (view, method) (
             increase(
-              django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method", status=~"[$error_codes].*"}[1w]
+              django_http_responses_total_by_status_view_method_total{
+                namespace=~"$namespace",
+                job=~"$job",
+                view=~"$view",
+                view!~"%(djangoIgnoredViews)s",
+                method=~"$method",
+                status=~"[$error_codes].*"
+              }[1w]
             ) > 0
           )
         )
@@ -407,7 +431,7 @@ local statPanel = grafana.statPanel;
         topk(10,
           sum by (view) (
             rate(
-              django_http_requests_latency_seconds_by_view_method_sum{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method"}[5m]
+              django_http_requests_latency_seconds_by_view_method_sum{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method"}[1w]
             )
           )
           /
@@ -417,7 +441,7 @@ local statPanel = grafana.statPanel;
             )
           )
         ), 0.001
-      )
+      ) > 0
     ||| % $._config,
     local topLatencyPerView1wTable =
       grafana.tablePanel.new(
@@ -437,6 +461,13 @@ local statPanel = grafana.statPanel;
           {
             alias: 'View',
             pattern: 'view',
+          },
+          {
+            alias: 'Value',
+            pattern: 'Value',
+            type: 'number',
+            unit: 's',
+            decimals: '0',
           },
         ]
       )
@@ -458,11 +489,11 @@ local statPanel = grafana.statPanel;
         collapse=true
       ),
 
-    'django-http-requests.json':
-      grafana.dashboard.new(
+    'django-requests.json':
+      dashboard.new(
         'Django / Requests',
         description='A dashboard that monitors Django. It is created using the Django-mixin for the the (Django-exporter)[https://github.com/adinhodovic/django-exporter]',
-        uid=$._config.httpRequestDashboardUid,
+        uid=$._config.requestsDashboardUid,
         tags=$._config.tags,
         time_from='now-1h',
         editable=true,
@@ -472,7 +503,7 @@ local statPanel = grafana.statPanel;
       .addPanel(summaryRow, gridPos={ h: 1, w: 24, x: 0, y: 0 })
       .addPanel(requestVolumeStatPanel, gridPos={ h: 4, w: 6, x: 0, y: 1 })
       .addPanel(requestSuccessRateStatPanel, gridPos={ h: 4, w: 6, x: 6, y: 1 })
-      .addPanel(requestLatencyP95SummaryTable, gridPos={ h: 4, w: 6, x: 12, y: 1 })
+      .addPanel(requestLatencyP95SummaryStatPanel, gridPos={ h: 4, w: 6, x: 12, y: 1 })
       .addPanel(requestBytesStatPanel, gridPos={ h: 4, w: 6, x: 18, y: 1 })
       .addPanel(perViewRow, gridPos={ h: 1, w: 24, x: 0, y: 5 })
       .addPanel(requestLatencyGraphPanel, gridPos={ h: 10, w: 12, x: 0, y: 6 })

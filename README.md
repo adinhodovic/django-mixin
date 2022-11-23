@@ -1,6 +1,6 @@
-# Prometheus Monitoring Mixin for Celery
+# Prometheus Monitoring Mixin for Django
 
-A set of Grafana dashboards and Prometheus alerts for Celery.
+A set of Grafana dashboards and Prometheus alerts for Django.
 
 ## How to use
 

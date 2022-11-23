@@ -13,14 +13,14 @@ tests:
         values: '0 0'
     alert_rule_test:
       - eval_time: 5m
-        alertname: CeleryTaskFailed
+        alertname: DjangoTaskFailed
         exp_alerts:
           - exp_labels:
               job: django
               severity: warning
               name: failed_task
             exp_annotations:
-              summary: 'A Celery task has failed to complete.'
+              summary: 'A Django task has failed to complete.'
               description: 'The task failed_task failed to complete.'
   - interval: 1m
     input_series:
@@ -30,12 +30,12 @@ tests:
         values: '1 1'
     alert_rule_test:
       - eval_time: 5m
-        alertname: CeleryWorkerDown
+        alertname: DjangoWorkerDown
         exp_alerts:
           - exp_labels:
               job: django
               severity: warning
               hostname: down
             exp_annotations:
-              summary: 'A Celery worker is offline.'
-              description: 'The Celery worker down is offline.'
+              summary: 'A Django worker is offline.'
+              description: 'The Django worker down is offline.'

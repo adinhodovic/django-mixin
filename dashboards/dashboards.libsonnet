@@ -1,1 +1,3 @@
-(import 'django-per-view.libsonnet') + {}
+(import 'django-requests.libsonnet') +
+(import 'django-overview.libsonnet') +
+{}

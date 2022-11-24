@@ -2,7 +2,9 @@
    "__inputs": [ ],
    "__requires": [ ],
    "annotations": {
-      "list": [ ]
+      "list": [
+         { }
+      ]
    },
    "description": "A dashboard that monitors Django. It is created using the Django-mixin for the the (Django-exporter)[https://github.com/adinhodovic/django-exporter]",
    "editable": true,
@@ -681,9 +683,9 @@
             },
             "datasource": "$datasource",
             "hide": 0,
-            "includeAll": true,
+            "includeAll": false,
             "label": "Job",
-            "multi": true,
+            "multi": false,
             "name": "job",
             "options": [ ],
             "query": "label_values(django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\"}, job)",

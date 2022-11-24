@@ -6,6 +6,10 @@ local template = grafana.template;
 local graphPanel = grafana.graphPanel;
 local statPanel = grafana.statPanel;
 
+local paginateTable = {
+  pageSize: 6,
+};
+
 {
   grafanaDashboards+:: {
 
@@ -37,7 +41,6 @@ local statPanel = grafana.statPanel;
         label='Job',
         datasource='$datasource',
         query='label_values(django_http_responses_total_by_status_view_method_total{namespace=~"$namespace"}, job)',
-        current='',
         hide='',
         refresh=1,
         multi=false,
@@ -52,22 +55,7 @@ local statPanel = grafana.statPanel;
         name='view',
         label='View',
         datasource='$datasource',
-        query='label_values(django_http_responses_total_by_status_view_method_total{%s}, view)' % defaultFilters,
-        current='',
-        hide='',
-        refresh=1,
-        multi=true,
-        includeAll=true,
-        sort=1
-      ),
-
-    local statusTemplate =
-      template.new(
-        name='status',
-        label='Status',
-        datasource='$datasource',
-        query='label_values(django_http_responses_total_by_status_view_method_total{%s, view=~"$view"}, status)' % defaultFilters,
-        current='',
+        query='label_values(django_http_responses_total_by_status_view_method_total{%s, %s}, view)' % [defaultFilters, $._config.djangoIgnoredViews],
         hide='',
         refresh=1,
         multi=true,
@@ -80,8 +68,7 @@ local statPanel = grafana.statPanel;
         name='method',
         label='Method',
         datasource='$datasource',
-        query='label_values(django_http_responses_total_by_status_view_method_total{%s, view=~"$view", status=~"$status"}, method)' % defaultFilters,
-        current='',
+        query='label_values(django_http_responses_total_by_status_view_method_total{%s, view=~"$view"}, method)' % defaultFilters,
         hide='',
         refresh=1,
         multi=true,
@@ -89,29 +76,12 @@ local statPanel = grafana.statPanel;
         sort=1
       ),
 
-    local errorCodesTemplate =
-      template.custom(
-        name='error_codes',
-        label='Error Codes',
-        query='4,5',
-        allValues='4-5',
-        current='All',
-        hide='',
-        refresh=1,
-        multi=false,
-        includeAll=true,
-      ) + {
-        description: '4 represents all 4xx codes, 5 represents all 5xx codes',
-      },
-
     local requestTemplates = [
       prometheusTemplate,
       namespaceTemplate,
       jobTemplate,
       viewTemplate,
-      statusTemplate,
       methodTemplate,
-      errorCodesTemplate,
     ],
 
     local requestVolumeQuery = |||
@@ -139,7 +109,7 @@ local statPanel = grafana.statPanel;
     local requestSuccessRateQuery = |||
       sum(
         rate(
-          django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method", status!~"[$error_codes].*"}[2m]
+          django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method", status!~"[4-5].*"}[2m]
           )
       ) /
       sum(
@@ -150,7 +120,7 @@ local statPanel = grafana.statPanel;
     ||| % $._config,
     local requestSuccessRateStatPanel =
       statPanel.new(
-        'Success Rate (non $error_codes-xx responses)',
+        'Success Rate (non 4-5xx responses)',
         datasource='$datasource',
         unit='percentunit',
         reducerFunction='lastNotNull',
@@ -235,7 +205,7 @@ local statPanel = grafana.statPanel;
     local apiRequestLatencyP99Query = std.strReplace(apiRequestLatencyP50Query, '0.50', '0.99'),
 
     local apiRequestLatencyTable =
-      grafana.tablePanel.new(
+      paginateTable + grafana.tablePanel.new(
         'API & Other Views Request Latency',
         datasource='$datasource',
         sort={
@@ -277,21 +247,21 @@ local statPanel = grafana.statPanel;
           },
         ]
       )
-      .addTarget(
+                      .addTarget(
         prometheus.target(
           apiRequestLatencyP50Query,
           format='table',
           instant=true
         )
       )
-      .addTarget(
+                      .addTarget(
         prometheus.target(
           apiRequestLatencyP95Query,
           format='table',
           instant=true
         )
       )
-      .addTarget(
+                      .addTarget(
         prometheus.target(
           apiRequestLatencyP99Query,
           format='table',
@@ -304,7 +274,7 @@ local statPanel = grafana.statPanel;
     local adminRequestLatencyP99Query = std.strReplace(apiRequestLatencyP99Query, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
 
     local adminRequestLatencyTable =
-      grafana.tablePanel.new(
+      paginateTable + grafana.tablePanel.new(
         'Admin Request Latency',
         datasource='$datasource',
         sort={
@@ -346,21 +316,21 @@ local statPanel = grafana.statPanel;
           },
         ]
       )
-      .addTarget(
+                      .addTarget(
         prometheus.target(
           adminRequestLatencyP50Query,
           format='table',
           instant=true
         )
       )
-      .addTarget(
+                      .addTarget(
         prometheus.target(
           adminRequestLatencyP95Query,
           format='table',
           instant=true
         )
       )
-      .addTarget(
+                      .addTarget(
         prometheus.target(
           adminRequestLatencyP99Query,
           format='table',
@@ -378,7 +348,6 @@ local statPanel = grafana.statPanel;
               view=~"$view",
               view!~"%(djangoIgnoredViews)s",
               method=~"$method",
-              status=~"$status",
               status=~"2.*",
               view!~"%(adminViewRegex)s",
             }[5m]
@@ -469,43 +438,6 @@ local statPanel = grafana.statPanel;
         )
       ),
 
-    local topTemplates1wQuery = |||
-      round(
-        sum by (templatename) (
-          increase(
-            django_http_responses_total_by_templatename_total{
-              namespace=~"$namespace",
-              job=~"$job",
-              templatename!~"%(djangoIgnoredTemplates)s"
-            }[1w]
-          ) > 0
-        )
-      )
-    ||| % $._config,
-
-    local topTemplates1wTable =
-      grafana.tablePanel.new(
-        'Top Templates (1w)',
-        datasource='$datasource',
-        sort={
-          col: 2,
-          desc: true,
-        },
-        styles=[
-          {
-            alias: 'Time',
-            dateFormat: 'YYYY-MM-DD HH:mm:ss',
-            type: 'hidden',
-            pattern: 'Time',
-          },
-          {
-            alias: 'Template Name',
-            pattern: 'templatename',
-          },
-        ]
-      )
-      .addTarget(prometheus.target(topTemplates1wQuery, format='table', instant=true)),
-
     local topResponsePerView1wQuery = |||
       round(
         topk(10,
@@ -524,7 +456,7 @@ local statPanel = grafana.statPanel;
       )
     ||| % $._config,
     local topResponsePerView1wTable =
-      grafana.tablePanel.new(
+      paginateTable + grafana.tablePanel.new(
         'Top Responses Per View (1w)',
         datasource='$datasource',
         sort={
@@ -544,7 +476,7 @@ local statPanel = grafana.statPanel;
           },
         ]
       )
-      .addTarget(prometheus.target(topResponsePerView1wQuery, format='table', instant=true)),
+                      .addTarget(prometheus.target(topResponsePerView1wQuery, format='table', instant=true)),
 
     local topErrorsPerViewMethod1wQuery = |||
       round(
@@ -557,7 +489,7 @@ local statPanel = grafana.statPanel;
                 view=~"$view",
                 view!~"%(djangoIgnoredViews)s",
                 method=~"$method",
-                status=~"[$error_codes].*"
+                status=~"[4-5].*"
               }[1w]
             ) > 0
           )
@@ -565,7 +497,7 @@ local statPanel = grafana.statPanel;
       )
     ||| % $._config,
     local topErrorsPerViewMethod1wTable =
-      grafana.tablePanel.new(
+      paginateTable + grafana.tablePanel.new(
         'Top Error Responses Per View & Method (1w)',
         datasource='$datasource',
         sort={
@@ -585,28 +517,25 @@ local statPanel = grafana.statPanel;
           },
         ]
       )
-      .addTarget(prometheus.target(topErrorsPerViewMethod1wQuery, format='table', instant=true)),
+                      .addTarget(prometheus.target(topErrorsPerViewMethod1wQuery, format='table', instant=true)),
 
-    local topLatencyPerView1wQuery = |||
-      round(
-        topk(10,
-          sum by (view) (
-            rate(
-              django_http_requests_latency_seconds_by_view_method_sum{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method"}[1w]
-            )
+    local topMethods1wQuery = |||
+      topk(5,
+        sum by (method) (
+          increase(
+              django_http_requests_latency_seconds_by_view_method_sum{
+                namespace=~"$namespace",
+                job=~"$job",
+                view=~"$view",
+                view!~"%(djangoIgnoredViews)s"
+              }[1w]
           )
-          /
-          sum by (view) (
-            rate(
-              django_http_requests_latency_seconds_by_view_method_count{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method"}[1w]
-            )
-          )
-        ), 0.001
+        )
       ) > 0
     ||| % $._config,
-    local topLatencyPerView1wTable =
-      grafana.tablePanel.new(
-        'Top Average Latency Per View (1w)',
+    local topMethods1wTable =
+      paginateTable + grafana.tablePanel.new(
+        'Top Methods (1w)',
         datasource='$datasource',
         sort={
           col: 2,
@@ -620,19 +549,53 @@ local statPanel = grafana.statPanel;
             pattern: 'Time',
           },
           {
-            alias: 'View',
-            pattern: 'view',
+            alias: 'Method',
+            pattern: 'method',
           },
           {
             alias: 'Value',
             pattern: 'Value',
             type: 'number',
-            unit: 's',
-            decimals: '0',
           },
         ]
       )
-      .addTarget(prometheus.target(topLatencyPerView1wQuery, format='table', instant=true)),
+                      .addTarget(prometheus.target(topMethods1wQuery, format='table', instant=true)),
+
+    local topTemplates1wQuery = |||
+      topk(5,
+        sum by (templatename) (
+          increase(
+            django_http_responses_total_by_templatename_total{
+              namespace=~"$namespace",
+              job=~"$job",
+              templatename!~"%(djangoIgnoredTemplates)s"
+            }[1w]
+          ) > 0
+        )
+      )
+    ||| % $._config,
+    local topTemplates1wTable =
+      paginateTable + grafana.tablePanel.new(
+        'Top Templates (1w)',
+        datasource='$datasource',
+        sort={
+          col: 2,
+          desc: true,
+        },
+        styles=[
+          {
+            alias: 'Time',
+            dateFormat: 'YYYY-MM-DD HH:mm:ss',
+            type: 'hidden',
+            pattern: 'Time',
+          },
+          {
+            alias: 'Template Name',
+            pattern: 'templatename',
+          },
+        ]
+      )
+                      .addTarget(prometheus.target(topTemplates1wQuery, format='table', instant=true)),
 
     local summaryRow =
       row.new(
@@ -656,9 +619,9 @@ local statPanel = grafana.statPanel;
 
     'django-requests.json':
       dashboard.new(
-        'Django / Requests',
+        'Django / Requests / Overview',
         description='A dashboard that monitors Django. It is created using the Django-mixin for the the (Django-exporter)[https://github.com/adinhodovic/django-exporter]',
-        uid=$._config.requestsDashboardUid,
+        uid=$._config.requestsOverviewDashboardUid,
         tags=$._config.tags,
         time_from='now-1h',
         editable=true,
@@ -678,9 +641,9 @@ local statPanel = grafana.statPanel;
       .addPanel(adminRequestLatencyTable, gridPos={ h: 10, w: 12, x: 12, y: 17 })
       .addPanel(weeklyBreakdownRow, gridPos={ h: 1, w: 24, x: 0, y: 26 })
       .addPanel(topResponsePerView1wTable, gridPos={ h: 8, w: 12, x: 0, y: 27 })
-      .addPanel(topLatencyPerView1wTable, gridPos={ h: 8, w: 12, x: 12, y: 27 })
+      .addPanel(topErrorsPerViewMethod1wTable, gridPos={ h: 8, w: 12, x: 12, y: 27 })
       .addPanel(topTemplates1wTable, gridPos={ h: 8, w: 12, x: 0, y: 35 })
-      .addPanel(topErrorsPerViewMethod1wTable, gridPos={ h: 8, w: 12, x: 12, y: 35 })
+      .addPanel(topMethods1wTable, gridPos={ h: 8, w: 12, x: 12, y: 35 })
 
       +
       { templating+: { list+: requestTemplates } },

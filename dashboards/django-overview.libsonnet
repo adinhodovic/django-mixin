@@ -61,26 +61,10 @@ local annotation = grafana.annotation;
         sort=1
       ),
 
-    local errorCodesTemplate =
-      template.custom(
-        name='error_codes',
-        label='Error Codes',
-        query='4,5',
-        allValues='4-5',
-        current='All',
-        hide='',
-        refresh=1,
-        multi=false,
-        includeAll=true,
-      ) + {
-        description: '4 represents all 4xx codes, 5 represents all 5xx codes',
-      },
-
     local requestTemplates = [
       prometheusTemplate,
       namespaceTemplate,
       jobTemplate,
-      errorCodesTemplate,
     ],
 
     local requestVolumeQuery = |||
@@ -107,41 +91,6 @@ local annotation = grafana.annotation;
       .addThresholds([
         { color: 'red', value: 0 },
         { color: 'green', value: 0.001 },
-      ]),
-
-    local requestSuccessRateQuery = |||
-      sum(
-        rate(
-          django_http_responses_total_by_status_view_method_total{
-            namespace=~"$namespace",
-            job=~"$job",
-            view!~"%(djangoIgnoredViews)s",
-            status!~"[$error_codes].*"
-          }[2m]
-        )
-      ) /
-      sum(
-        rate(
-          django_http_responses_total_by_status_view_method_total{
-            namespace=~"$namespace",
-            job=~"$job",
-            view!~"%(djangoIgnoredViews)s",
-          }[2m]
-        )
-      )
-    ||| % $._config,
-    local requestSuccessRateStatPanel =
-      statPanel.new(
-        'Success Rate (non $error_codes-xx responses)',
-        datasource='$datasource',
-        unit='percentunit',
-        reducerFunction='lastNotNull',
-      )
-      .addTarget(prometheus.target(requestSuccessRateQuery))
-      .addThresholds([
-        { color: 'red', value: 0.90 },
-        { color: 'yellow', value: 0.95 },
-        { color: 'green', value: 0.99 },
       ]),
 
     local cacheHitrateQuery = |||
@@ -183,13 +132,13 @@ local annotation = grafana.annotation;
           django_db_execute_total {
             namespace=~"$namespace",
             job=~"$job",
-          }[2m]
+          }[$__rate_interval]
         )
       ) by (namespace, job)
     ||| % $._config,
     local dbOpsStatPanel =
       statPanel.new(
-        'Database Ops[2m]',
+        'Database Ops',
         datasource='$datasource',
         reducerFunction='lastNotNull',
         unit='ops'
@@ -199,6 +148,59 @@ local annotation = grafana.annotation;
         { color: 'green', value: 0 },
       ]),
 
+    local response2xxQuery = |||
+      round(
+        sum(
+          irate(
+            django_http_responses_total_by_status_view_method_total{
+              namespace=~"$namespace",
+              job=~"$job",
+              view!~"%(djangoIgnoredViews)s",
+              status=~"2.*",
+            }[$__rate_interval]
+          ) > 0
+        ) by (job), 0.001
+      )
+    ||| % $._config,
+    local response4xxQuery = std.strReplace(response2xxQuery, '2.*', '4.*'),
+    local response5xxQuery = std.strReplace(response2xxQuery, '2.*', '5.*'),
+
+    local responseGraphPanel =
+      graphPanel.new(
+        'Responses',
+        datasource='$datasource',
+        format='reqps',
+        legend_show=true,
+        legend_values=true,
+        legend_alignAsTable=true,
+        legend_rightSide=true,
+        legend_avg=true,
+        legend_max=true,
+        legend_hideZero=true,
+        fill=10,
+        stack=true,
+        percentage=true,
+        nullPointMode='null as zero'
+      )
+      .addTarget(
+        prometheus.target(
+          response2xxQuery,
+          legendFormat='2xx',
+        )
+      )
+      .addTarget(
+        prometheus.target(
+          response4xxQuery,
+          legendFormat='4xx',
+        )
+      )
+      .addTarget(
+        prometheus.target(
+          response5xxQuery,
+          legendFormat='5xx',
+        )
+      ),
+
     local dbLatencyP50Query = |||
       histogram_quantile(0.50,
         sum(
@@ -206,7 +208,7 @@ local annotation = grafana.annotation;
             django_db_query_duration_seconds_bucket{
               namespace=~"$namespace",
               job=~"$job",
-            }[5m]
+            }[$__rate_interval]
           ) > 0
         ) by (vendor, namespace, job, le)
       )
@@ -217,7 +219,7 @@ local annotation = grafana.annotation;
 
     local dbLatencyGraphPanel =
       graphPanel.new(
-        'DB Latency [5m]',
+        'DB Latency',
         datasource='$datasource',
         format='s',
         legend_show=true,
@@ -290,7 +292,7 @@ local annotation = grafana.annotation;
           django_cache_get_hits_total{
             namespace=~"$namespace",
             job=~"$job",
-          }[5m]
+          }[$__rate_interval]
         ) > 0
       ) by (namespace, job, backend)
     ||| % $._config,
@@ -298,7 +300,7 @@ local annotation = grafana.annotation;
 
     local cacheGetGraphPanel =
       graphPanel.new(
-        'Cache Get [5m]',
+        'Cache Get',
         datasource='$datasource',
         format='ops',
         legend_show=true,
@@ -387,16 +389,16 @@ local annotation = grafana.annotation;
       )
       .addAnnotation(customAnnotation)
       .addPanel(summaryRow, gridPos={ h: 1, w: 24, x: 0, y: 0 })
-      .addPanel(requestVolumeStatPanel, gridPos={ h: 4, w: 6, x: 0, y: 1 })
-      .addPanel(requestSuccessRateStatPanel, gridPos={ h: 4, w: 6, x: 6, y: 1 })
+      .addPanel(requestVolumeStatPanel, gridPos={ h: 4, w: 12, x: 0, y: 1 })
       .addPanel(dbOpsStatPanel, gridPos={ h: 4, w: 6, x: 12, y: 1 })
       .addPanel(cacheHitrateStatPanel, gridPos={ h: 4, w: 6, x: 18, y: 1 })
-      .addPanel(dbRow, gridPos={ h: 1, w: 24, x: 0, y: 5 })
-      .addPanel(topDbErrors1wTable, gridPos={ h: 10, w: 12, x: 0, y: 6 })
-      .addPanel(dbLatencyGraphPanel, gridPos={ h: 5, w: 12, x: 12, y: 6 })
-      .addPanel(dbConnectionsGraphPanel, gridPos={ h: 5, w: 12, x: 12, y: 11 })
-      .addPanel(cacheRow, gridPos={ h: 1, w: 24, x: 0, y: 16 })
-      .addPanel(cacheGetGraphPanel, gridPos={ h: 8, w: 24, x: 0, y: 17 })
+      .addPanel(responseGraphPanel, gridPos={ h: 6, w: 24, x: 0, y: 5 })
+      .addPanel(dbRow, gridPos={ h: 1, w: 24, x: 0, y: 11 })
+      .addPanel(topDbErrors1wTable, gridPos={ h: 10, w: 12, x: 0, y: 12 })
+      .addPanel(dbLatencyGraphPanel, gridPos={ h: 5, w: 12, x: 12, y: 12 })
+      .addPanel(dbConnectionsGraphPanel, gridPos={ h: 5, w: 12, x: 12, y: 17 })
+      .addPanel(cacheRow, gridPos={ h: 1, w: 24, x: 0, y: 22 })
+      .addPanel(cacheGetGraphPanel, gridPos={ h: 4, w: 24, x: 0, y: 23 })
       +
       { templating+: { list+: requestTemplates } },
   },

@@ -109,12 +109,12 @@ local paginateTable = {
     local requestSuccessRateQuery = |||
       sum(
         rate(
-          django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method", status!~"[4-5].*"}[2m]
+          django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method", status!~"[4-5].*"}[$__rate_interval]
           )
       ) /
       sum(
         rate(
-          django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method"}[2m]
+          django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method"}[$__rate_interval]
         )
       )
     ||| % $._config,
@@ -139,14 +139,14 @@ local paginateTable = {
               django_http_requests_body_total_bytes_bucket {
                 namespace=~"$namespace",
                 job=~"$job",
-              }[5m]
+              }[$__rate_interval]
           )
         ) by (view, job, le)
       )
     ||| % $._config,
     local requestBytesStatPanel =
       statPanel.new(
-        'Average Request Body Size (P95) [5m]',
+        'Average Request Body Size (P95)',
         datasource='$datasource',
         unit='decbytes',
         reducerFunction='lastNotNull',
@@ -166,14 +166,14 @@ local paginateTable = {
                 namespace=~"$namespace",
                 job=~"$job",
                 view!~"%(djangoIgnoredViews)s",
-              }[5m]
+              }[$__rate_interval]
           )
         ) by (job, le)
       )
     ||| % $._config,
     local requestLatencyP95SummaryStatPanel =
       statPanel.new(
-        'Average Request Latency (P95) [5m]',
+        'Average Request Latency (P95)',
         datasource='$datasource',
         unit='s',
         reducerFunction='lastNotNull',
@@ -350,7 +350,7 @@ local paginateTable = {
               method=~"$method",
               status=~"2.*",
               view!~"%(adminViewRegex)s",
-            }[5m]
+            }[$__rate_interval]
           ) > 0
         ) by (namespace, job, view), 0.001
       )
@@ -432,7 +432,7 @@ local paginateTable = {
               django_http_exceptions_total_by_type_total{
                 namespace=~"$namespace",
                 job=~"$job",
-              }[2w]
+              }[1w]
             ) > 0
           )
         )
@@ -475,7 +475,7 @@ local paginateTable = {
                 namespace=~"$namespace",
                 job=~"$job",
                 view!~"%(djangoIgnoredViews)s",
-              }[2w]
+              }[1w]
             ) > 0
           )
         )

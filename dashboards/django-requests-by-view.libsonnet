@@ -80,7 +80,6 @@ local statPanel = grafana.statPanel;
       methodTemplate,
     ],
 
-
     local requestHttpExceptionsQuery = |||
       sum by (view) (
         increase(
@@ -176,7 +175,96 @@ local statPanel = grafana.statPanel;
         { color: 'red', value: 5000 },
       ]),
 
-    local responseQuery = |||
+    local requestQuery = |||
+      round(
+        sum(
+          irate(
+            django_http_requests_total_by_view_transport_method_total{
+              namespace=~"$namespace",
+              job=~"$job",
+              view="$view"
+            }[$__rate_interval]
+          ) > 0
+        ) by (job), 0.001
+      )
+    ||| % $._config,
+
+    local requestGraphPanel =
+      graphPanel.new(
+        'Requests',
+        datasource='$datasource',
+        format='reqps',
+        legend_show=true,
+        legend_values=true,
+        legend_alignAsTable=true,
+        legend_rightSide=true,
+        legend_avg=true,
+        legend_max=true,
+        legend_hideZero=true,
+        fill=10,
+        nullPointMode='null as zero'
+      )
+      .addTarget(
+        prometheus.target(
+          requestQuery,
+          legendFormat='reqps',
+        )
+      ),
+
+    local response2xxQuery = |||
+      round(
+        sum(
+          irate(
+            django_http_responses_total_by_status_view_method_total{
+              namespace=~"$namespace",
+              job=~"$job",
+              view!~"%(djangoIgnoredViews)s",
+              status=~"2.*",
+            }[$__rate_interval]
+          ) > 0
+        ) by (job), 0.001
+      )
+    ||| % $._config,
+    local response4xxQuery = std.strReplace(response2xxQuery, '2.*', '4.*'),
+    local response5xxQuery = std.strReplace(response2xxQuery, '2.*', '5.*'),
+
+    local responseGraphPanel =
+      graphPanel.new(
+        'Responses',
+        datasource='$datasource',
+        format='reqps',
+        legend_show=true,
+        legend_values=true,
+        legend_alignAsTable=true,
+        legend_rightSide=true,
+        legend_avg=true,
+        legend_max=true,
+        legend_hideZero=true,
+        fill=10,
+        stack=true,
+        percentage=true,
+        nullPointMode='null as zero'
+      )
+      .addTarget(
+        prometheus.target(
+          response2xxQuery,
+          legendFormat='2xx',
+        )
+      )
+      .addTarget(
+        prometheus.target(
+          response4xxQuery,
+          legendFormat='4xx',
+        )
+      )
+      .addTarget(
+        prometheus.target(
+          response5xxQuery,
+          legendFormat='5xx',
+        )
+      ),
+
+    local responseStatusCodesQuery = |||
       round(
         sum(
           irate(
@@ -191,9 +279,9 @@ local statPanel = grafana.statPanel;
       )
     ||| % $._config,
 
-    local responseGraphPanel =
+    local responseStatusCodesGraphPanel =
       graphPanel.new(
-        'Response Status',
+        'Response Status Codes',
         datasource='$datasource',
         format='reqps',
         legend_show=true,
@@ -206,7 +294,7 @@ local statPanel = grafana.statPanel;
       )
       .addTarget(
         prometheus.target(
-          responseQuery,
+          responseStatusCodesQuery,
           legendFormat='{{ view }} / {{ status }} / {{ method }}',
         )
       ),
@@ -272,9 +360,14 @@ local statPanel = grafana.statPanel;
         title='Summary'
       ),
 
-    local apiViewRow =
+    local requestResponseRow =
       row.new(
-        title='API Views & Other'
+        title='Request & Responses'
+      ),
+
+    local latencyStatusCodesRow =
+      row.new(
+        title='Latency & Status Codes'
       ),
 
     'django-requests-by-view.json':
@@ -293,9 +386,12 @@ local statPanel = grafana.statPanel;
       .addPanel(requestHttpExceptionsStatPanel, gridPos={ h: 4, w: 6, x: 6, y: 1 })
       .addPanel(requestLatencyP50SummaryStatPanel, gridPos={ h: 4, w: 6, x: 12, y: 1 })
       .addPanel(requestLatencyP95SummaryStatPanel, gridPos={ h: 4, w: 6, x: 18, y: 1 })
-      .addPanel(apiViewRow, gridPos={ h: 1, w: 24, x: 0, y: 5 })
-      .addPanel(responseGraphPanel, gridPos={ h: 10, w: 12, x: 0, y: 6 })
-      .addPanel(requestLatencyGraphPanel, gridPos={ h: 10, w: 12, x: 12, y: 6 })
+      .addPanel(requestResponseRow, gridPos={ h: 1, w: 24, x: 0, y: 5 })
+      .addPanel(requestGraphPanel, gridPos={ h: 8, w: 12, x: 0, y: 6 })
+      .addPanel(responseGraphPanel, gridPos={ h: 8, w: 12, x: 12, y: 6 })
+      .addPanel(latencyStatusCodesRow, gridPos={ h: 1, w: 24, x: 0, y: 14 })
+      .addPanel(responseStatusCodesGraphPanel, gridPos={ h: 8, w: 12, x: 0, y: 15 })
+      .addPanel(requestLatencyGraphPanel, gridPos={ h: 8, w: 12, x: 12, y: 15 })
       +
       { templating+: { list+: requestTemplates } },
   },

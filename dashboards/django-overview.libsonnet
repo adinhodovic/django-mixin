@@ -57,8 +57,8 @@ local annotation = grafana.annotation;
         current='',
         hide='',
         refresh=1,
-        multi=true,
-        includeAll=true,
+        multi=false,
+        includeAll=false,
         sort=1
       ),
 

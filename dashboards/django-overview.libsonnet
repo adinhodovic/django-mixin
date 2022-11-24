@@ -5,9 +5,26 @@ local prometheus = grafana.prometheus;
 local template = grafana.template;
 local graphPanel = grafana.graphPanel;
 local statPanel = grafana.statPanel;
+local annotation = grafana.annotation;
 
 {
   grafanaDashboards+:: {
+
+    local customAnnotation = if $._config.annotation.enabled then
+      annotation.datasource(
+        'Deployment',
+        datasource=$._config.datasource,
+        hide=false,
+      ) + {
+        target: {
+          limit: 100,
+          matchAny: false,
+          tags: [
+            'wario',
+          ],
+          type: 'tags',
+        },
+      } else {},
 
     local prometheusTemplate =
       template.datasource(
@@ -369,6 +386,7 @@ local statPanel = grafana.statPanel;
         time_to='now',
         timezone='utc'
       )
+      .addAnnotation(customAnnotation)
       .addPanel(summaryRow, gridPos={ h: 1, w: 24, x: 0, y: 0 })
       .addPanel(requestVolumeStatPanel, gridPos={ h: 4, w: 6, x: 0, y: 1 })
       .addPanel(requestSuccessRateStatPanel, gridPos={ h: 4, w: 6, x: 6, y: 1 })

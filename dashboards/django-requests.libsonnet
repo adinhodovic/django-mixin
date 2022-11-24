@@ -215,7 +215,7 @@ local statPanel = grafana.statPanel;
         { color: 'red', value: 5000 },
       ]),
 
-    local requestLatencyP50Query = |||
+    local apiRequestLatencyP50Query = |||
       histogram_quantile(0.50,
         sum(
           rate(
@@ -223,20 +223,20 @@ local statPanel = grafana.statPanel;
               namespace=~"$namespace",
               job=~"$job",
               view=~"$view",
-              view!~"%(djangoIgnoredViews)s",
+              view!~"%(djangoIgnoredViews)s|",
+              view!~"%(adminViewRegex)s",
               method=~"$method"
             }[5m]
           ) > 0
         ) by (view, job, le)
       )
     ||| % $._config,
-    local requestLatencyP95Query = std.strReplace(requestLatencyP50Query, '0.50', '0.95'),
-    local requestLatencyP99Query = std.strReplace(requestLatencyP50Query, '0.50', '0.99'),
-    local requestLatencyP999Query = std.strReplace(requestLatencyP50Query, '0.50', '0.999'),
+    local apiRequestLatencyP95Query = std.strReplace(apiRequestLatencyP50Query, '0.50', '0.95'),
+    local apiRequestLatencyP99Query = std.strReplace(apiRequestLatencyP50Query, '0.50', '0.99'),
 
-    local requestLatencyGraphPanel =
+    local apiRequestLatencyGraphPanel =
       graphPanel.new(
-        'Request Latency',
+        'API & Other Views Request Latency',
         datasource='$datasource',
         format='s',
         legend_show=true,
@@ -249,30 +249,60 @@ local statPanel = grafana.statPanel;
       )
       .addTarget(
         prometheus.target(
-          requestLatencyP50Query,
+          apiRequestLatencyP50Query,
           legendFormat='50 - {{ view }}',
         )
       )
       .addTarget(
         prometheus.target(
-          requestLatencyP95Query,
+          apiRequestLatencyP95Query,
           legendFormat='95 - {{ view }}',
         )
       )
       .addTarget(
         prometheus.target(
-          requestLatencyP99Query,
+          apiRequestLatencyP99Query,
           legendFormat='99 - {{ view }}',
+        )
+      ),
+
+    local adminRequestLatencyP50Query = std.strReplace(apiRequestLatencyP50Query, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
+    local adminRequestLatencyP95Query = std.strReplace(apiRequestLatencyP95Query, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
+    local adminRequestLatencyP99Query = std.strReplace(apiRequestLatencyP99Query, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
+
+    local adminRequestLatencyGraphPanel =
+      graphPanel.new(
+        'Admin Views Request Latency',
+        datasource='$datasource',
+        format='s',
+        legend_show=true,
+        legend_values=true,
+        legend_alignAsTable=true,
+        legend_rightSide=true,
+        legend_avg=true,
+        legend_max=true,
+        legend_hideZero=true,
+      )
+      .addTarget(
+        prometheus.target(
+          adminRequestLatencyP50Query,
+          legendFormat='50 - {{ view }}',
         )
       )
       .addTarget(
         prometheus.target(
-          requestLatencyP999Query,
-          legendFormat='99.9 - {{ view }}',
+          adminRequestLatencyP95Query,
+          legendFormat='95 - {{ view }}',
+        )
+      )
+      .addTarget(
+        prometheus.target(
+          adminRequestLatencyP99Query,
+          legendFormat='99 - {{ view }}',
         )
       ),
 
-    local responseQuery = |||
+    local apiResponseQuery = |||
       round(
         sum(
           irate(
@@ -282,15 +312,16 @@ local statPanel = grafana.statPanel;
               view=~"$view",
               view!~"%(djangoIgnoredViews)s",
               method=~"$method",
-              status=~"$status"
+              status=~"$status",
+              view!~"%(adminViewRegex)s",
             }[5m]
           ) > 0
         ) by (status, view), 0.001
       )
     ||| % $._config,
-    local responseGraphPanel =
+    local apiResponseGraphPanel =
       graphPanel.new(
-        'Response Status',
+        'API & Other Views Response Status',
         datasource='$datasource',
         format='reqps',
         legend_show=true,
@@ -303,7 +334,28 @@ local statPanel = grafana.statPanel;
       )
       .addTarget(
         prometheus.target(
-          responseQuery,
+          apiResponseQuery,
+          legendFormat='{{ view }} / {{ status }}',
+        )
+      ),
+
+    local adminResponseQuery = std.strReplace(apiResponseQuery, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
+    local adminResponseGraphPanel =
+      graphPanel.new(
+        'Admin Views Response Status',
+        datasource='$datasource',
+        format='reqps',
+        legend_show=true,
+        legend_values=true,
+        legend_alignAsTable=true,
+        legend_rightSide=true,
+        legend_avg=true,
+        legend_max=true,
+        legend_hideZero=true,
+      )
+      .addTarget(
+        prometheus.target(
+          adminResponseQuery,
           legendFormat='{{ view }} / {{ status }}',
         )
       ),
@@ -445,7 +497,7 @@ local statPanel = grafana.statPanel;
     ||| % $._config,
     local topLatencyPerView1wTable =
       grafana.tablePanel.new(
-        'Top Latency Per View (1w)',
+        'Top Average Latency Per View (1w)',
         datasource='$datasource',
         sort={
           col: 2,
@@ -478,15 +530,19 @@ local statPanel = grafana.statPanel;
         title='Summary'
       ),
 
-    local perViewRow =
+    local adminViewRow =
       row.new(
-        title='Per View'
+        title='Admin Views'
+      ),
+
+    local apiViewRow =
+      row.new(
+        title='API Views & Other'
       ),
 
     local weeklyBreakdownRow =
       row.new(
         title='Weekly Breakdown',
-        collapse=true
       ),
 
     'django-requests.json':
@@ -505,15 +561,18 @@ local statPanel = grafana.statPanel;
       .addPanel(requestSuccessRateStatPanel, gridPos={ h: 4, w: 6, x: 6, y: 1 })
       .addPanel(requestLatencyP95SummaryStatPanel, gridPos={ h: 4, w: 6, x: 12, y: 1 })
       .addPanel(requestBytesStatPanel, gridPos={ h: 4, w: 6, x: 18, y: 1 })
-      .addPanel(perViewRow, gridPos={ h: 1, w: 24, x: 0, y: 5 })
-      .addPanel(requestLatencyGraphPanel, gridPos={ h: 10, w: 12, x: 0, y: 6 })
-      .addPanel(responseGraphPanel, gridPos={ h: 10, w: 12, x: 12, y: 6 })
-      .addPanel(weeklyBreakdownRow
-                .addPanel(topResponsePerView1wTable, gridPos={ h: 8, w: 12, x: 0, y: 17 })
-                .addPanel(topLatencyPerView1wTable, gridPos={ h: 8, w: 12, x: 12, y: 17 })
-                .addPanel(topTemplates1wTable, gridPos={ h: 8, w: 12, x: 0, y: 25 })
-                .addPanel(topErrorsPerViewMethod1wTable, gridPos={ h: 8, w: 12, x: 12, y: 25 })
-                , gridPos={ h: 1, w: 24, x: 0, y: 16 })
+      .addPanel(apiViewRow, gridPos={ h: 1, w: 24, x: 0, y: 5 })
+      .addPanel(apiRequestLatencyGraphPanel, gridPos={ h: 10, w: 12, x: 0, y: 6 })
+      .addPanel(apiResponseGraphPanel, gridPos={ h: 10, w: 12, x: 12, y: 6 })
+      .addPanel(adminViewRow, gridPos={ h: 1, w: 24, x: 0, y: 16 })
+      .addPanel(adminRequestLatencyGraphPanel, gridPos={ h: 10, w: 12, x: 0, y: 17 })
+      .addPanel(adminResponseGraphPanel, gridPos={ h: 10, w: 12, x: 12, y: 17 })
+      .addPanel(weeklyBreakdownRow, gridPos={ h: 1, w: 24, x: 0, y: 26 })
+      .addPanel(topResponsePerView1wTable, gridPos={ h: 8, w: 12, x: 0, y: 27 })
+      .addPanel(topLatencyPerView1wTable, gridPos={ h: 8, w: 12, x: 12, y: 27 })
+      .addPanel(topTemplates1wTable, gridPos={ h: 8, w: 12, x: 0, y: 35 })
+      .addPanel(topErrorsPerViewMethod1wTable, gridPos={ h: 8, w: 12, x: 12, y: 35 })
+
       +
       { templating+: { list+: requestTemplates } },
   },

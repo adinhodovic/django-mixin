@@ -7,7 +7,16 @@
     requestsDashboardUid: 'django-requests-jqkwfdqwd',
 
     tags: ['django', 'django-mixin'],
+
+    adminViewRegex: 'admin.*',
     djangoIgnoredViews: 'health_check:health_check_home|prometheus-django-metrics',
-    djangoIgnoredTemplates: "\\\\['health_check/index.html'\\\\]",
+    djangoIgnoredTemplates: "\\\\['health_check/index.html'\\\\]|None",
+
+    // Custom annotations to display in graphs
+    annotation: {
+      enabled: false,
+      datasource: '-- Grafana --',
+      tags: [],
+    },
   },
 }

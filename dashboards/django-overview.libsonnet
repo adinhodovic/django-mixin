@@ -43,8 +43,8 @@ local annotation = grafana.annotation;
         current='',
         hide='',
         refresh=1,
-        multi=true,
-        includeAll=true,
+        multi=false,
+        includeAll=false,
         sort=1
       ),
 
@@ -54,7 +54,6 @@ local annotation = grafana.annotation;
         label='Job',
         datasource='$datasource',
         query='label_values(django_http_responses_total_by_status_view_method_total{namespace=~"$namespace"}, job)',
-        current='',
         hide='',
         refresh=1,
         multi=false,

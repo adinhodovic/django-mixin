@@ -55,7 +55,7 @@ local paginateTable = {
         name='view',
         label='View',
         datasource='$datasource',
-        query='label_values(django_http_responses_total_by_status_view_method_total{%s, %s}, view)' % [defaultFilters, $._config.djangoIgnoredViews],
+        query='label_values(django_http_responses_total_by_status_view_method_total{%s, view!~"%s"}, view)' % [defaultFilters, $._config.djangoIgnoredViews],
         hide='',
         refresh=1,
         multi=true,
@@ -205,11 +205,11 @@ local paginateTable = {
     local apiRequestLatencyP99Query = std.strReplace(apiRequestLatencyP50Query, '0.50', '0.99'),
 
     local apiRequestLatencyTable =
-      paginateTable + grafana.tablePanel.new(
+      grafana.tablePanel.new(
         'API & Other Views Request Latency',
         datasource='$datasource',
         sort={
-          col: 2,
+          col: 3,
           desc: false,
         },
         styles=[
@@ -247,38 +247,38 @@ local paginateTable = {
           },
         ]
       )
-                      .addTarget(
+      .addTarget(
         prometheus.target(
           apiRequestLatencyP50Query,
           format='table',
           instant=true
         )
       )
-                      .addTarget(
+      .addTarget(
         prometheus.target(
           apiRequestLatencyP95Query,
           format='table',
           instant=true
         )
       )
-                      .addTarget(
+      .addTarget(
         prometheus.target(
           apiRequestLatencyP99Query,
           format='table',
           instant=true
         )
-      ),
+      ) + paginateTable,
 
     local adminRequestLatencyP50Query = std.strReplace(apiRequestLatencyP50Query, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
     local adminRequestLatencyP95Query = std.strReplace(apiRequestLatencyP95Query, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
     local adminRequestLatencyP99Query = std.strReplace(apiRequestLatencyP99Query, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
 
     local adminRequestLatencyTable =
-      paginateTable + grafana.tablePanel.new(
+      grafana.tablePanel.new(
         'Admin Request Latency',
         datasource='$datasource',
         sort={
-          col: 2,
+          col: 3,
           desc: false,
         },
         styles=[
@@ -316,27 +316,27 @@ local paginateTable = {
           },
         ]
       )
-                      .addTarget(
+      .addTarget(
         prometheus.target(
           adminRequestLatencyP50Query,
           format='table',
           instant=true
         )
       )
-                      .addTarget(
+      .addTarget(
         prometheus.target(
           adminRequestLatencyP95Query,
           format='table',
           instant=true
         )
       )
-                      .addTarget(
+      .addTarget(
         prometheus.target(
           adminRequestLatencyP99Query,
           format='table',
           instant=true
         )
-      ),
+      ) + paginateTable,
 
     local apiResponse2xxQuery = |||
       round(
@@ -355,7 +355,6 @@ local paginateTable = {
         ) by (namespace, job, view), 0.001
       )
     ||| % $._config,
-    local apiResponse3xxQuery = std.strReplace(apiResponse2xxQuery, '2.*', '3.*'),
     local apiResponse4xxQuery = std.strReplace(apiResponse2xxQuery, '2.*', '4.*'),
     local apiResponse5xxQuery = std.strReplace(apiResponse2xxQuery, '2.*', '5.*'),
     local apiResponseGraphPanel =
@@ -379,12 +378,6 @@ local paginateTable = {
       )
       .addTarget(
         prometheus.target(
-          apiResponse3xxQuery,
-          legendFormat='{{ view }} / 3xx',
-        )
-      )
-      .addTarget(
-        prometheus.target(
           apiResponse4xxQuery,
           legendFormat='{{ view }} / 4xx',
         )
@@ -397,7 +390,6 @@ local paginateTable = {
       ),
 
     local adminResponse2xxQuery = std.strReplace(apiResponse2xxQuery, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
-    local adminResponse3xxQuery = std.strReplace(apiResponse3xxQuery, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
     local adminResponse4xxQuery = std.strReplace(apiResponse4xxQuery, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
     local adminResponse5xxQuery = std.strReplace(apiResponse5xxQuery, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
     local adminResponseGraphPanel =
@@ -421,12 +413,6 @@ local paginateTable = {
       )
       .addTarget(
         prometheus.target(
-          adminResponse3xxQuery,
-          legendFormat='{{ view }} / 3xx',
-        )
-      )
-      .addTarget(
-        prometheus.target(
           adminResponse4xxQuery,
           legendFormat='{{ view }} / 4xx',
         )
@@ -437,6 +423,91 @@ local paginateTable = {
           legendFormat='{{ view }} / 5xx',
         )
       ),
+
+    local topHttpExceptionsByType1wQuery = |||
+      round(
+        topk(10,
+          sum by (type) (
+            increase(
+              django_http_exceptions_total_by_type_total{
+                namespace=~"$namespace",
+                job=~"$job",
+              }[2w]
+            ) > 0
+          )
+        )
+      )
+    ||| % $._config,
+    local topHttpExceptionsByType1wTable =
+      grafana.tablePanel.new(
+        'Top Exceptions by Type (1w)',
+        datasource='$datasource',
+        sort={
+          col: 2,
+          desc: true,
+        },
+        styles=[
+          {
+            alias: 'Time',
+            dateFormat: 'YYYY-MM-DD HH:mm:ss',
+            type: 'hidden',
+            pattern: 'Time',
+          },
+          {
+            alias: 'Type',
+            pattern: 'type',
+          },
+          {
+            alias: 'Value',
+            pattern: 'Value',
+            type: 'number',
+          },
+        ]
+      )
+      .addTarget(prometheus.target(topHttpExceptionsByType1wQuery, format='table', instant=true)) + paginateTable,
+
+    local topHttpExceptionsByView1wQuery = |||
+      round(
+        topk(10,
+          sum by (view) (
+            increase(
+              django_http_exceptions_total_by_view_total{
+                namespace=~"$namespace",
+                job=~"$job",
+                view!~"%(djangoIgnoredViews)s",
+              }[2w]
+            ) > 0
+          )
+        )
+      )
+    ||| % $._config,
+    local topHttpExceptionsByView1wTable =
+      grafana.tablePanel.new(
+        'Top Exceptions by View (1w)',
+        datasource='$datasource',
+        sort={
+          col: 2,
+          desc: true,
+        },
+        styles=[
+          {
+            alias: 'Time',
+            dateFormat: 'YYYY-MM-DD HH:mm:ss',
+            type: 'hidden',
+            pattern: 'Time',
+          },
+          {
+            alias: 'View',
+            pattern: 'view',
+          },
+          {
+            alias: 'Value',
+            pattern: 'Value',
+            type: 'number',
+          },
+        ]
+      )
+      .addTarget(prometheus.target(topHttpExceptionsByView1wQuery, format='table', instant=true)) + paginateTable,
 
     local topResponsePerView1wQuery = |||
       round(
@@ -456,7 +527,7 @@ local paginateTable = {
       )
     ||| % $._config,
     local topResponsePerView1wTable =
-      paginateTable + grafana.tablePanel.new(
+      grafana.tablePanel.new(
         'Top Responses Per View (1w)',
         datasource='$datasource',
         sort={
@@ -476,106 +547,26 @@ local paginateTable = {
           },
         ]
       )
-                      .addTarget(prometheus.target(topResponsePerView1wQuery, format='table', instant=true)),
+      .addTarget(prometheus.target(topResponsePerView1wQuery, format='table', instant=true)) + paginateTable,
 
-    local topErrorsPerViewMethod1wQuery = |||
-      round(
-        topk(10,
-          sum by (view, method) (
+
+    local topTemplates1wQuery = |||
+      topk(10,
+        round(
+          sum by (templatename) (
             increase(
-              django_http_responses_total_by_status_view_method_total{
+              django_http_responses_total_by_templatename_total{
                 namespace=~"$namespace",
                 job=~"$job",
-                view=~"$view",
-                view!~"%(djangoIgnoredViews)s",
-                method=~"$method",
-                status=~"[4-5].*"
+                templatename!~"%(djangoIgnoredTemplates)s"
               }[1w]
             ) > 0
           )
         )
       )
     ||| % $._config,
-    local topErrorsPerViewMethod1wTable =
-      paginateTable + grafana.tablePanel.new(
-        'Top Error Responses Per View & Method (1w)',
-        datasource='$datasource',
-        sort={
-          col: 2,
-          desc: true,
-        },
-        styles=[
-          {
-            alias: 'Time',
-            dateFormat: 'YYYY-MM-DD HH:mm:ss',
-            type: 'hidden',
-            pattern: 'Time',
-          },
-          {
-            alias: 'View',
-            pattern: 'view',
-          },
-        ]
-      )
-                      .addTarget(prometheus.target(topErrorsPerViewMethod1wQuery, format='table', instant=true)),
-
-    local topMethods1wQuery = |||
-      topk(5,
-        sum by (method) (
-          increase(
-              django_http_requests_latency_seconds_by_view_method_sum{
-                namespace=~"$namespace",
-                job=~"$job",
-                view=~"$view",
-                view!~"%(djangoIgnoredViews)s"
-              }[1w]
-          )
-        )
-      ) > 0
-    ||| % $._config,
-    local topMethods1wTable =
-      paginateTable + grafana.tablePanel.new(
-        'Top Methods (1w)',
-        datasource='$datasource',
-        sort={
-          col: 2,
-          desc: true,
-        },
-        styles=[
-          {
-            alias: 'Time',
-            dateFormat: 'YYYY-MM-DD HH:mm:ss',
-            type: 'hidden',
-            pattern: 'Time',
-          },
-          {
-            alias: 'Method',
-            pattern: 'method',
-          },
-          {
-            alias: 'Value',
-            pattern: 'Value',
-            type: 'number',
-          },
-        ]
-      )
-                      .addTarget(prometheus.target(topMethods1wQuery, format='table', instant=true)),
-
-    local topTemplates1wQuery = |||
-      topk(5,
-        sum by (templatename) (
-          increase(
-            django_http_responses_total_by_templatename_total{
-              namespace=~"$namespace",
-              job=~"$job",
-              templatename!~"%(djangoIgnoredTemplates)s"
-            }[1w]
-          ) > 0
-        )
-      )
-    ||| % $._config,
     local topTemplates1wTable =
-      paginateTable + grafana.tablePanel.new(
+      grafana.tablePanel.new(
         'Top Templates (1w)',
         datasource='$datasource',
         sort={
@@ -595,7 +586,7 @@ local paginateTable = {
           },
         ]
       )
-                      .addTarget(prometheus.target(topTemplates1wQuery, format='table', instant=true)),
+      .addTarget(prometheus.target(topTemplates1wQuery, format='table', instant=true)) + paginateTable,
 
     local summaryRow =
       row.new(
@@ -640,10 +631,10 @@ local paginateTable = {
       .addPanel(adminResponseGraphPanel, gridPos={ h: 10, w: 12, x: 0, y: 17 })
       .addPanel(adminRequestLatencyTable, gridPos={ h: 10, w: 12, x: 12, y: 17 })
       .addPanel(weeklyBreakdownRow, gridPos={ h: 1, w: 24, x: 0, y: 26 })
-      .addPanel(topResponsePerView1wTable, gridPos={ h: 8, w: 12, x: 0, y: 27 })
-      .addPanel(topErrorsPerViewMethod1wTable, gridPos={ h: 8, w: 12, x: 12, y: 27 })
-      .addPanel(topTemplates1wTable, gridPos={ h: 8, w: 12, x: 0, y: 35 })
-      .addPanel(topMethods1wTable, gridPos={ h: 8, w: 12, x: 12, y: 35 })
+      .addPanel(topHttpExceptionsByView1wTable, gridPos={ h: 8, w: 12, x: 0, y: 27 })
+      .addPanel(topHttpExceptionsByType1wTable, gridPos={ h: 8, w: 12, x: 12, y: 27 })
+      .addPanel(topResponsePerView1wTable, gridPos={ h: 8, w: 12, x: 0, y: 35 })
+      .addPanel(topTemplates1wTable, gridPos={ h: 8, w: 12, x: 12, y: 35 })
 
       +
       { templating+: { list+: requestTemplates } },

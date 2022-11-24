@@ -50,25 +50,11 @@ local statPanel = grafana.statPanel;
         name='view',
         label='View',
         datasource='$datasource',
-        query='label_values(django_http_responses_total_by_status_view_method_total{%s}, view)' % defaultFilters,
+        query='label_values(django_http_responses_total_by_status_view_method_total{%s, view!~"%s"}, view)' % [defaultFilters, $._config.djangoIgnoredViews],
         hide='',
         refresh=1,
         multi=false,
         includeAll=false,
-        sort=1
-      ),
-
-    local statusTemplate =
-      template.new(
-        name='status',
-        label='Status',
-        datasource='$datasource',
-        query='label_values(django_http_responses_total_by_status_view_method_total{%s, view=~"$view"}, status)' % defaultFilters,
-        current='',
-        hide='',
-        refresh=1,
-        multi=true,
-        includeAll=true,
         sort=1
       ),
 
@@ -77,7 +63,7 @@ local statPanel = grafana.statPanel;
         name='method',
         label='Method',
         datasource='$datasource',
-        query='label_values(django_http_responses_total_by_status_view_method_total{%s, view=~"$view", status=~"$status"}, method)' % defaultFilters,
+        query='label_values(django_http_responses_total_by_status_view_method_total{%s, view=~"$view"}, method)' % defaultFilters,
         current='',
         hide='',
         refresh=1,
@@ -86,68 +72,56 @@ local statPanel = grafana.statPanel;
         sort=1
       ),
 
-    local errorCodesTemplate =
-      template.custom(
-        name='error_codes',
-        label='Error Codes',
-        query='4,5',
-        allValues='4-5',
-        current='All',
-        hide='',
-        refresh=1,
-        multi=false,
-        includeAll=true,
-      ) + {
-        description: '4 represents all 4xx codes, 5 represents all 5xx codes',
-      },
-
     local requestTemplates = [
       prometheusTemplate,
       namespaceTemplate,
       jobTemplate,
       viewTemplate,
-      statusTemplate,
       methodTemplate,
-      errorCodesTemplate,
     ],
 
-    local requestVolumeQuery = |||
-      round(
-        sum(
-          irate(
-            django_http_requests_total_by_view_transport_method_total{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method"}[2m]
-          )
-        ), 0.001
+
+    local requestHttpExceptionsQuery = |||
+      sum by (view) (
+        increase(
+          django_http_exceptions_total_by_view_total{
+            namespace=~"$namespace",
+            job=~"$job",
+            view="$view",
+          }[1w]
+        ) > 0
       )
     ||| % $._config,
-    local requestVolumeStatPanel =
+
+    local requestHttpExceptionsStatPanel =
       statPanel.new(
-        'Request Volume',
+        'HTTP Exceptions [1w]',
         datasource='$datasource',
         unit='reqps',
         reducerFunction='lastNotNull',
       )
-      .addTarget(prometheus.target(requestVolumeQuery))
+      .addTarget(prometheus.target(requestHttpExceptionsQuery))
       .addThresholds([
-        { color: 'red', value: 0 },
-        { color: 'green', value: 0.001 },
+        { color: 'green', value: 0.1 },
+        { color: 'yellow', value: 10 },
+        { color: 'red', value: 100 },
       ]),
 
     local requestSuccessRateQuery = |||
       sum(
         rate(
-          django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method", status!~"[$error_codes].*"}[2m]
+          django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view="$view", method=~"$method", status!~"[4-5].*"}[1w]
           )
       ) /
       sum(
         rate(
-          django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method"}[2m]
+          django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view="$view", method=~"$method"}[1w]
         )
       )
     ||| % $._config,
     local requestSuccessRateStatPanel =
       statPanel.new(
-        'Success Rate (non $error_codes-xx responses)',
+        'Success Rate (non 4xx-5xx responses) [1w]',
         datasource='$datasource',
         unit='percentunit',
         reducerFunction='lastNotNull',
@@ -159,30 +133,47 @@ local statPanel = grafana.statPanel;
         { color: 'green', value: 0.99 },
       ]),
 
-    local requestBytesP95Query = |||
-      histogram_quantile(0.95,
+    local requestLatencyP50SummaryQuery = |||
+      histogram_quantile(0.50,
         sum (
           rate (
-              django_http_requests_body_total_bytes_bucket {
+              django_http_requests_latency_seconds_by_view_method_bucket {
                 namespace=~"$namespace",
                 job=~"$job",
-              }[5m]
+                view="$view",
+                method=~"$method"
+              }[$__range]
           )
-        ) by (view, job, le)
+        ) by (job, le)
       )
     ||| % $._config,
-    local requestBytesStatPanel =
+    local requestLatencyP50SummaryStatPanel =
       statPanel.new(
-        'Average Request Body Size (P95) [5m]',
+        'Average Request Latency (P50) [1w]',
         datasource='$datasource',
-        unit='decbytes',
+        unit='s',
         reducerFunction='lastNotNull',
       )
-      .addTarget(prometheus.target(requestBytesP95Query))
+      .addTarget(prometheus.target(requestLatencyP50SummaryQuery))
       .addThresholds([
-        { color: 'red', value: 0.1 },
-        { color: 'yellow', value: 0.2 },
-        { color: 'green', value: 0.3 },
+        { color: 'green', value: 0 },
+        { color: 'yellow', value: 1000 },
+        { color: 'red', value: 2000 },
+      ]),
+
+    local requestLatencyP95SummaryQuery = std.strReplace(requestLatencyP50SummaryQuery, '0.50', '0.95'),
+    local requestLatencyP95SummaryStatPanel =
+      statPanel.new(
+        'Request Latency (P95) [1w]',
+        datasource='$datasource',
+        unit='s',
+        reducerFunction='lastNotNull',
+      )
+      .addTarget(prometheus.target(requestLatencyP95SummaryQuery))
+      .addThresholds([
+        { color: 'green', value: 0 },
+        { color: 'yellow', value: 2500 },
+        { color: 'red', value: 5000 },
       ]),
 
     local responseQuery = |||
@@ -194,7 +185,6 @@ local statPanel = grafana.statPanel;
               job=~"$job",
               view="$view",
               method=~"$method",
-              status=~"$status",
             }[5m]
           ) > 0
         ) by (namespace, job, view, status, method), 0.001
@@ -220,33 +210,6 @@ local statPanel = grafana.statPanel;
           legendFormat='{{ view }} / {{ status }} / {{ method }}',
         )
       ),
-
-    local requestLatencyP95SummaryQuery = |||
-      histogram_quantile(0.95,
-        sum (
-          rate (
-              django_http_requests_latency_seconds_by_view_method_bucket {
-                namespace=~"$namespace",
-                job=~"$job",
-                view!~"%(djangoIgnoredViews)s",
-              }[5m]
-          )
-        ) by (job, le)
-      )
-    ||| % $._config,
-    local requestLatencyP95SummaryStatPanel =
-      statPanel.new(
-        'Average Request Latency (P95) [5m]',
-        datasource='$datasource',
-        unit='s',
-        reducerFunction='lastNotNull',
-      )
-      .addTarget(prometheus.target(requestLatencyP95SummaryQuery))
-      .addThresholds([
-        { color: 'green', value: 0 },
-        { color: 'yellow', value: 2500 },
-        { color: 'red', value: 5000 },
-      ]),
 
     local requestLatencyP50Query = |||
       histogram_quantile(0.50,
@@ -309,11 +272,6 @@ local statPanel = grafana.statPanel;
         title='Summary'
       ),
 
-    local adminViewRow =
-      row.new(
-        title='Admin Views'
-      ),
-
     local apiViewRow =
       row.new(
         title='API Views & Other'
@@ -331,10 +289,10 @@ local statPanel = grafana.statPanel;
         timezone='utc'
       )
       .addPanel(summaryRow, gridPos={ h: 1, w: 24, x: 0, y: 0 })
-      .addPanel(requestVolumeStatPanel, gridPos={ h: 4, w: 6, x: 0, y: 1 })
-      .addPanel(requestSuccessRateStatPanel, gridPos={ h: 4, w: 6, x: 6, y: 1 })
-      .addPanel(requestLatencyP95SummaryStatPanel, gridPos={ h: 4, w: 6, x: 12, y: 1 })
-      .addPanel(requestBytesStatPanel, gridPos={ h: 4, w: 6, x: 18, y: 1 })
+      .addPanel(requestSuccessRateStatPanel, gridPos={ h: 4, w: 6, x: 0, y: 1 })
+      .addPanel(requestHttpExceptionsStatPanel, gridPos={ h: 4, w: 6, x: 6, y: 1 })
+      .addPanel(requestLatencyP50SummaryStatPanel, gridPos={ h: 4, w: 6, x: 12, y: 1 })
+      .addPanel(requestLatencyP95SummaryStatPanel, gridPos={ h: 4, w: 6, x: 18, y: 1 })
       .addPanel(apiViewRow, gridPos={ h: 1, w: 24, x: 0, y: 5 })
       .addPanel(responseGraphPanel, gridPos={ h: 10, w: 12, x: 0, y: 6 })
       .addPanel(requestLatencyGraphPanel, gridPos={ h: 10, w: 12, x: 12, y: 6 })

@@ -820,7 +820,7 @@
          ],
          "targets": [
             {
-               "expr": "round(\n  topk(10,\n    sum by (view) (\n      increase(\n        django_http_responses_total_by_status_view_method_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          view=~\"$view\",\n          view!~\"health_check:health_check_home|prometheus-django-metrics\",\n          method=~\"$method\"\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
+               "expr": "round(\n  topk(10,\n    sum by (view) (\n      increase(\n        django_http_responses_total_by_status_view_method_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          view!~\"health_check:health_check_home|prometheus-django-metrics\",\n          method=~\"$method\"\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
                "format": "table",
                "instant": true,
                "intervalFactor": 2,
@@ -830,7 +830,7 @@
          ],
          "timeFrom": null,
          "timeShift": null,
-         "title": "Top Responses Per View (1w)",
+         "title": "Top Responses By View (1w)",
          "type": "table"
       },
       {

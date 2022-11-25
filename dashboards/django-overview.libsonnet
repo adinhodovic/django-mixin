@@ -13,14 +13,14 @@ local annotation = grafana.annotation;
     local customAnnotation = if $._config.annotation.enabled then
       annotation.datasource(
         'Deployment',
-        datasource=$._config.datasource,
+        datasource=$._config.annotation.datasource,
         hide=false,
       ) + {
         target: {
           limit: 100,
           matchAny: false,
           tags: [
-            'wario',
+            $._config.annotation.tags,
           ],
           type: 'tags',
         },
@@ -324,6 +324,45 @@ local annotation = grafana.annotation;
         )
       ),
 
+    local migrationsAppliedQuery = |||
+      max (
+        django_migrations_applied_total {
+            namespace="namespace",
+            job="job"
+        }
+      ) by (namespace, job)
+    ||| % $._config,
+    local migrationsAppliedStatPanel =
+      statPanel.new(
+        'Migrations Applied',
+        datasource='$datasource',
+        reducerFunction='lastNotNull',
+      )
+      .addTarget(prometheus.target(migrationsAppliedQuery))
+      .addThresholds([
+        { color: 'green', value: 0 },
+      ]),
+
+    local migrationsUnAppliedQuery = |||
+      max (
+        django_migrations_unapplied_total {
+            namespace="namespace",
+            job="$job"
+        }
+      ) by (namespace, job)
+    ||| % $._config,
+    local migrationsUnAppliedStatPanel =
+      statPanel.new(
+        'Migrations Unapplied',
+        datasource='$datasource',
+        reducerFunction='lastNotNull',
+      )
+      .addTarget(prometheus.target(migrationsUnAppliedQuery))
+      .addThresholds([
+        { color: 'green', value: 0 },
+        { color: 'red', value: 0.1 },
+      ]),
+
     local topDbErrors1wQuery = |||
       round(
         topk(10,
@@ -379,7 +418,7 @@ local annotation = grafana.annotation;
     'django-overview.json':
       dashboard.new(
         'Django / Overview',
-        description='A dashboard that monitors Django. It is created using the Django-mixin for the the (Django-exporter)[https://github.com/adinhodovic/django-exporter]',
+        description='A dashboard that monitors Django which focuses on giving a overview for the system (requests, db, cache). It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).',
         uid=$._config.overviewDashboardUid,
         tags=$._config.tags,
         time_from='now-1h',
@@ -394,11 +433,13 @@ local annotation = grafana.annotation;
       .addPanel(cacheHitrateStatPanel, gridPos={ h: 4, w: 6, x: 18, y: 1 })
       .addPanel(responseGraphPanel, gridPos={ h: 6, w: 24, x: 0, y: 5 })
       .addPanel(dbRow, gridPos={ h: 1, w: 24, x: 0, y: 11 })
-      .addPanel(topDbErrors1wTable, gridPos={ h: 10, w: 12, x: 0, y: 12 })
-      .addPanel(dbLatencyGraphPanel, gridPos={ h: 5, w: 12, x: 12, y: 12 })
-      .addPanel(dbConnectionsGraphPanel, gridPos={ h: 5, w: 12, x: 12, y: 17 })
-      .addPanel(cacheRow, gridPos={ h: 1, w: 24, x: 0, y: 22 })
-      .addPanel(cacheGetGraphPanel, gridPos={ h: 4, w: 24, x: 0, y: 23 })
+      .addPanel(migrationsAppliedStatPanel, gridPos={ h: 3, w: 6, x: 0, y: 12 })
+      .addPanel(migrationsUnAppliedStatPanel, gridPos={ h: 3, w: 6, x: 6, y: 12 })
+      .addPanel(topDbErrors1wTable, gridPos={ h: 9, w: 12, x: 0, y: 15 })
+      .addPanel(dbLatencyGraphPanel, gridPos={ h: 6, w: 12, x: 12, y: 12 })
+      .addPanel(dbConnectionsGraphPanel, gridPos={ h: 6, w: 12, x: 12, y: 18 })
+      .addPanel(cacheRow, gridPos={ h: 1, w: 24, x: 0, y: 24 })
+      .addPanel(cacheGetGraphPanel, gridPos={ h: 4, w: 24, x: 0, y: 25 })
       +
       { templating+: { list+: requestTemplates } },
   },

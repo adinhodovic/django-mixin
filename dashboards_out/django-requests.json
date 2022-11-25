@@ -4,7 +4,7 @@
    "annotations": {
       "list": [ ]
    },
-   "description": "A dashboard that monitors Django. It is created using the Django-mixin for the the (Django-exporter)[https://github.com/adinhodovic/django-exporter]",
+   "description": "A dashboard that monitors Django which focuses on giving a overview for requests. It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).",
    "editable": true,
    "gnetId": null,
    "graphTooltip": 0,
@@ -140,7 +140,7 @@
          "pluginVersion": "7",
          "targets": [
             {
-               "expr": "sum(\n  rate(\n    django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\", job=~\"$job\", view=~\"$view\", view!~\"health_check:health_check_home|prometheus-django-metrics\", method=~\"$method\", status!~\"[4-5].*\"}[2m]\n    )\n) /\nsum(\n  rate(\n    django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\", job=~\"$job\", view=~\"$view\", view!~\"health_check:health_check_home|prometheus-django-metrics\", method=~\"$method\"}[2m]\n  )\n)\n",
+               "expr": "sum(\n  rate(\n    django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\", job=~\"$job\", view=~\"$view\", view!~\"health_check:health_check_home|prometheus-django-metrics\", method=~\"$method\", status!~\"[4-5].*\"}[$__rate_interval]\n    )\n) /\nsum(\n  rate(\n    django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\", job=~\"$job\", view=~\"$view\", view!~\"health_check:health_check_home|prometheus-django-metrics\", method=~\"$method\"}[$__rate_interval]\n  )\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "",
@@ -202,14 +202,14 @@
          "pluginVersion": "7",
          "targets": [
             {
-               "expr": "histogram_quantile(0.95,\n  sum (\n    rate (\n        django_http_requests_latency_seconds_by_view_method_bucket {\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        }[5m]\n    )\n  ) by (job, le)\n)\n",
+               "expr": "histogram_quantile(0.95,\n  sum (\n    rate (\n        django_http_requests_latency_seconds_by_view_method_bucket {\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        }[$__rate_interval]\n    )\n  ) by (job, le)\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "",
                "refId": "A"
             }
          ],
-         "title": "Average Request Latency (P95) [5m]",
+         "title": "Average Request Latency (P95)",
          "transparent": false,
          "type": "stat"
       },
@@ -264,14 +264,14 @@
          "pluginVersion": "7",
          "targets": [
             {
-               "expr": "histogram_quantile(0.95,\n  sum (\n    rate (\n        django_http_requests_body_total_bytes_bucket {\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n        }[5m]\n    )\n  ) by (view, job, le)\n)\n",
+               "expr": "histogram_quantile(0.95,\n  sum (\n    rate (\n        django_http_requests_body_total_bytes_bucket {\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n        }[$__rate_interval]\n    )\n  ) by (view, job, le)\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "",
                "refId": "A"
             }
          ],
-         "title": "Average Request Body Size (P95) [5m]",
+         "title": "Average Request Body Size (P95)",
          "transparent": false,
          "type": "stat"
       },
@@ -337,32 +337,25 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"2.*\",\n        view!~\"admin.*\",\n      }[5m]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"2.*\",\n        view!~\"admin.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "{{ view }} / 2xx",
                "refId": "A"
             },
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"3.*\",\n        view!~\"admin.*\",\n      }[5m]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "{{ view }} / 3xx",
-               "refId": "B"
-            },
-            {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"4.*\",\n        view!~\"admin.*\",\n      }[5m]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"4.*\",\n        view!~\"admin.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "{{ view }} / 4xx",
-               "refId": "C"
+               "refId": "B"
             },
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"5.*\",\n        view!~\"admin.*\",\n      }[5m]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"5.*\",\n        view!~\"admin.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "{{ view }} / 5xx",
-               "refId": "D"
+               "refId": "C"
             }
          ],
          "thresholds": [ ],
@@ -412,9 +405,10 @@
          },
          "id": 9,
          "links": [ ],
+         "pageSize": 6,
          "sort": {
-            "col": 2,
-            "desc": false
+            "col": 3,
+            "desc": true
          },
          "styles": [
             {
@@ -543,32 +537,25 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"2.*\",\n        view=~\"admin.*\",\n      }[5m]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"2.*\",\n        view=~\"admin.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "{{ view }} / 2xx",
                "refId": "A"
             },
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"3.*\",\n        view=~\"admin.*\",\n      }[5m]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "{{ view }} / 3xx",
-               "refId": "B"
-            },
-            {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"4.*\",\n        view=~\"admin.*\",\n      }[5m]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"4.*\",\n        view=~\"admin.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "{{ view }} / 4xx",
-               "refId": "C"
+               "refId": "B"
             },
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"5.*\",\n        view=~\"admin.*\",\n      }[5m]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=~\"$view\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        method=~\"$method\",\n        status=~\"5.*\",\n        view=~\"admin.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (namespace, job, view), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "{{ view }} / 5xx",
-               "refId": "D"
+               "refId": "C"
             }
          ],
          "thresholds": [ ],
@@ -618,9 +605,10 @@
          },
          "id": 12,
          "links": [ ],
+         "pageSize": 6,
          "sort": {
-            "col": 2,
-            "desc": false
+            "col": 3,
+            "desc": true
          },
          "styles": [
             {
@@ -717,6 +705,103 @@
          },
          "id": 14,
          "links": [ ],
+         "pageSize": 6,
+         "sort": {
+            "col": 2,
+            "desc": true
+         },
+         "styles": [
+            {
+               "alias": "Time",
+               "dateFormat": "YYYY-MM-DD HH:mm:ss",
+               "pattern": "Time",
+               "type": "hidden"
+            },
+            {
+               "alias": "View",
+               "pattern": "view"
+            },
+            {
+               "alias": "Value",
+               "pattern": "Value",
+               "type": "number"
+            }
+         ],
+         "targets": [
+            {
+               "expr": "round(\n  topk(10,\n    sum by (view) (\n      increase(\n        django_http_exceptions_total_by_view_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
+               "format": "table",
+               "instant": true,
+               "intervalFactor": 2,
+               "legendFormat": "",
+               "refId": "A"
+            }
+         ],
+         "timeFrom": null,
+         "timeShift": null,
+         "title": "Top Exceptions by View (1w)",
+         "type": "table"
+      },
+      {
+         "columns": [ ],
+         "datasource": "$datasource",
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 27
+         },
+         "id": 15,
+         "links": [ ],
+         "pageSize": 6,
+         "sort": {
+            "col": 2,
+            "desc": true
+         },
+         "styles": [
+            {
+               "alias": "Time",
+               "dateFormat": "YYYY-MM-DD HH:mm:ss",
+               "pattern": "Time",
+               "type": "hidden"
+            },
+            {
+               "alias": "Type",
+               "pattern": "type"
+            },
+            {
+               "alias": "Value",
+               "pattern": "Value",
+               "type": "number"
+            }
+         ],
+         "targets": [
+            {
+               "expr": "round(\n  topk(10,\n    sum by (type) (\n      increase(\n        django_http_exceptions_total_by_type_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
+               "format": "table",
+               "instant": true,
+               "intervalFactor": 2,
+               "legendFormat": "",
+               "refId": "A"
+            }
+         ],
+         "timeFrom": null,
+         "timeShift": null,
+         "title": "Top Exceptions by Type (1w)",
+         "type": "table"
+      },
+      {
+         "columns": [ ],
+         "datasource": "$datasource",
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 35
+         },
+         "id": 16,
+         "links": [ ],
+         "pageSize": 6,
          "sort": {
             "col": 2,
             "desc": true
@@ -755,52 +840,11 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 27
-         },
-         "id": 15,
-         "links": [ ],
-         "sort": {
-            "col": 2,
-            "desc": true
-         },
-         "styles": [
-            {
-               "alias": "Time",
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "pattern": "Time",
-               "type": "hidden"
-            },
-            {
-               "alias": "View",
-               "pattern": "view"
-            }
-         ],
-         "targets": [
-            {
-               "expr": "round(\n  topk(10,\n    sum by (view, method) (\n      increase(\n        django_http_responses_total_by_status_view_method_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          view=~\"$view\",\n          view!~\"health_check:health_check_home|prometheus-django-metrics\",\n          method=~\"$method\",\n          status=~\"[4-5].*\"\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
-               "format": "table",
-               "instant": true,
-               "intervalFactor": 2,
-               "legendFormat": "",
-               "refId": "A"
-            }
-         ],
-         "timeFrom": null,
-         "timeShift": null,
-         "title": "Top Error Responses Per View & Method (1w)",
-         "type": "table"
-      },
-      {
-         "columns": [ ],
-         "datasource": "$datasource",
-         "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
             "y": 35
          },
-         "id": 16,
+         "id": 17,
          "links": [ ],
+         "pageSize": 6,
          "sort": {
             "col": 2,
             "desc": true
@@ -819,7 +863,7 @@
          ],
          "targets": [
             {
-               "expr": "topk(5,\n  sum by (templatename) (\n    increase(\n      django_http_responses_total_by_templatename_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        templatename!~\"\\\\['health_check/index.html'\\\\]|None\"\n      }[1w]\n    ) > 0\n  )\n)\n",
+               "expr": "topk(10,\n  round(\n    sum by (templatename) (\n      increase(\n        django_http_responses_total_by_templatename_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          templatename!~\"\\\\['health_check/index.html'\\\\]|None\"\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
                "format": "table",
                "instant": true,
                "intervalFactor": 2,
@@ -830,54 +874,6 @@
          "timeFrom": null,
          "timeShift": null,
          "title": "Top Templates (1w)",
-         "type": "table"
-      },
-      {
-         "columns": [ ],
-         "datasource": "$datasource",
-         "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 35
-         },
-         "id": 17,
-         "links": [ ],
-         "pageSize": 10,
-         "sort": {
-            "col": 2,
-            "desc": true
-         },
-         "styles": [
-            {
-               "alias": "Time",
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "pattern": "Time",
-               "type": "hidden"
-            },
-            {
-               "alias": "Method",
-               "pattern": "method"
-            },
-            {
-               "alias": "Value",
-               "pattern": "Value",
-               "type": "number"
-            }
-         ],
-         "targets": [
-            {
-               "expr": "topk(5,\n  sum by (method) (\n    increase(\n        django_http_requests_latency_seconds_by_view_method_sum{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          view=~\"$view\",\n          view!~\"health_check:health_check_home|prometheus-django-metrics\"\n        }[1w]\n    )\n  )\n) > 0\n",
-               "format": "table",
-               "instant": true,
-               "intervalFactor": 2,
-               "legendFormat": "",
-               "refId": "A"
-            }
-         ],
-         "timeFrom": null,
-         "timeShift": null,
-         "title": "Top Methods (1w)",
          "type": "table"
       }
    ],
@@ -958,7 +954,7 @@
             "multi": true,
             "name": "view",
             "options": [ ],
-            "query": "label_values(django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\", job=~\"$job\"}, view)",
+            "query": "label_values(django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\", job=~\"$job\", view!~\"health_check:health_check_home|prometheus-django-metrics\"}, view)",
             "refresh": 1,
             "regex": "",
             "sort": 1,
@@ -1020,7 +1016,7 @@
       ]
    },
    "timezone": "utc",
-   "title": "Django / Requests",
-   "uid": "django-requests-jqkwfdqwd",
+   "title": "Django / Requests / Overview",
+   "uid": "django-requests-jkwq",
    "version": 0
 }

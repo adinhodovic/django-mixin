@@ -373,7 +373,7 @@ local statPanel = grafana.statPanel;
     'django-requests-by-view.json':
       dashboard.new(
         'Django / Requests / By View',
-        description='A dashboard that monitors Django. It is created using the Django-mixin for the the (Django-exporter)[https://github.com/adinhodovic/django-exporter]',
+        description='A dashboard that monitors Django which focuses on breaking down requests by view. It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).',
         uid=$._config.requestsByViewDashboardUid,
         tags=$._config.tags,
         time_from='now-1h',

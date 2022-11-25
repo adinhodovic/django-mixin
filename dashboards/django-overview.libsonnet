@@ -5,26 +5,9 @@ local prometheus = grafana.prometheus;
 local template = grafana.template;
 local graphPanel = grafana.graphPanel;
 local statPanel = grafana.statPanel;
-local annotation = grafana.annotation;
 
 {
   grafanaDashboards+:: {
-
-    local customAnnotation = if $._config.annotation.enabled then
-      annotation.datasource(
-        'Deployment',
-        datasource=$._config.annotation.datasource,
-        hide=false,
-      ) + {
-        target: {
-          limit: 100,
-          matchAny: false,
-          tags: [
-            $._config.annotation.tags,
-          ],
-          type: 'tags',
-        },
-      } else {},
 
     local prometheusTemplate =
       template.datasource(
@@ -61,7 +44,7 @@ local annotation = grafana.annotation;
         sort=1
       ),
 
-    local requestTemplates = [
+    local templates = [
       prometheusTemplate,
       namespaceTemplate,
       jobTemplate,
@@ -310,6 +293,9 @@ local annotation = grafana.annotation;
         legend_avg=true,
         legend_max=true,
         legend_hideZero=true,
+        stack=true,
+        fill=10,
+        nullPointMode='null as zero'
       )
       .addTarget(
         prometheus.target(
@@ -327,8 +313,8 @@ local annotation = grafana.annotation;
     local migrationsAppliedQuery = |||
       max (
         django_migrations_applied_total {
-            namespace="namespace",
-            job="job"
+            namespace="$namespace",
+            job="$job"
         }
       ) by (namespace, job)
     ||| % $._config,
@@ -346,7 +332,7 @@ local annotation = grafana.annotation;
     local migrationsUnAppliedQuery = |||
       max (
         django_migrations_unapplied_total {
-            namespace="namespace",
+            namespace="$namespace",
             job="$job"
         }
       ) by (namespace, job)
@@ -426,7 +412,6 @@ local annotation = grafana.annotation;
         time_to='now',
         timezone='utc'
       )
-      .addAnnotation(customAnnotation)
       .addPanel(summaryRow, gridPos={ h: 1, w: 24, x: 0, y: 0 })
       .addPanel(requestVolumeStatPanel, gridPos={ h: 4, w: 12, x: 0, y: 1 })
       .addPanel(dbOpsStatPanel, gridPos={ h: 4, w: 6, x: 12, y: 1 })
@@ -439,8 +424,17 @@ local annotation = grafana.annotation;
       .addPanel(dbLatencyGraphPanel, gridPos={ h: 6, w: 12, x: 12, y: 12 })
       .addPanel(dbConnectionsGraphPanel, gridPos={ h: 6, w: 12, x: 12, y: 18 })
       .addPanel(cacheRow, gridPos={ h: 1, w: 24, x: 0, y: 24 })
-      .addPanel(cacheGetGraphPanel, gridPos={ h: 4, w: 24, x: 0, y: 25 })
+      .addPanel(cacheGetGraphPanel, gridPos={ h: 6, w: 24, x: 0, y: 25 })
       +
-      { templating+: { list+: requestTemplates } },
+      { templating+: { list+: templates } } +
+      if $._config.annotation.enabled then
+        {
+          annotations: {
+            list: [
+              $._config.customAnnotation,
+            ],
+          },
+        }
+      else {},
   },
 }

@@ -72,7 +72,7 @@ local statPanel = grafana.statPanel;
         sort=1
       ),
 
-    local requestTemplates = [
+    local templates = [
       prometheusTemplate,
       namespaceTemplate,
       jobTemplate,
@@ -96,7 +96,6 @@ local statPanel = grafana.statPanel;
       statPanel.new(
         'HTTP Exceptions [1w]',
         datasource='$datasource',
-        unit='reqps',
         reducerFunction='lastNotNull',
       )
       .addTarget(prometheus.target(requestHttpExceptionsQuery))
@@ -218,13 +217,14 @@ local statPanel = grafana.statPanel;
             django_http_responses_total_by_status_view_method_total{
               namespace=~"$namespace",
               job=~"$job",
-              view!~"%(djangoIgnoredViews)s",
+              view="$view",
               status=~"2.*",
             }[$__rate_interval]
           ) > 0
         ) by (job), 0.001
       )
     ||| % $._config,
+    local response3xxQuery = std.strReplace(response2xxQuery, '2.*', '3.*'),
     local response4xxQuery = std.strReplace(response2xxQuery, '2.*', '4.*'),
     local response5xxQuery = std.strReplace(response2xxQuery, '2.*', '5.*'),
 
@@ -249,6 +249,12 @@ local statPanel = grafana.statPanel;
         prometheus.target(
           response2xxQuery,
           legendFormat='2xx',
+        )
+      )
+      .addTarget(
+        prometheus.target(
+          response3xxQuery,
+          legendFormat='3xx',
         )
       )
       .addTarget(
@@ -291,6 +297,9 @@ local statPanel = grafana.statPanel;
         legend_avg=true,
         legend_max=true,
         legend_hideZero=true,
+        fill=10,
+        stack=true,
+        nullPointMode='null as zero'
       )
       .addTarget(
         prometheus.target(
@@ -393,6 +402,15 @@ local statPanel = grafana.statPanel;
       .addPanel(responseStatusCodesGraphPanel, gridPos={ h: 8, w: 12, x: 0, y: 15 })
       .addPanel(requestLatencyGraphPanel, gridPos={ h: 8, w: 12, x: 12, y: 15 })
       +
-      { templating+: { list+: requestTemplates } },
+      { templating+: { list+: templates } } +
+      if $._config.annotation.enabled then
+        {
+          annotations: {
+            list: [
+              $._config.customAnnotation,
+            ],
+          },
+        }
+      else {},
   },
 }

@@ -209,7 +209,7 @@
                "refId": "A"
             }
          ],
-         "title": "Average Request Latency (P95)",
+         "title": "Request Latency (P95)",
          "transparent": false,
          "type": "stat"
       },
@@ -264,14 +264,14 @@
          "pluginVersion": "7",
          "targets": [
             {
-               "expr": "histogram_quantile(0.95,\n  sum (\n    rate (\n        django_http_requests_body_total_bytes_bucket {\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n        }[$__rate_interval]\n    )\n  ) by (view, job, le)\n)\n",
+               "expr": "histogram_quantile(0.95,\n  sum (\n    rate (\n        django_http_requests_body_total_bytes_bucket {\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n        }[$__rate_interval]\n    )\n  ) by (job, le)\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "",
                "refId": "A"
             }
          ],
-         "title": "Average Request Body Size (P95)",
+         "title": "Request Body Size (P95)",
          "transparent": false,
          "type": "stat"
       },
@@ -300,7 +300,7 @@
          "dashLength": 10,
          "dashes": false,
          "datasource": "$datasource",
-         "fill": 1,
+         "fill": 10,
          "fillGradient": 0,
          "gridPos": {
             "h": 10,
@@ -325,7 +325,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -333,7 +333,7 @@
          "repeat": null,
          "seriesOverrides": [ ],
          "spaceLength": 10,
-         "stack": false,
+         "stack": true,
          "steppedLine": false,
          "targets": [
             {
@@ -500,7 +500,7 @@
          "dashLength": 10,
          "dashes": false,
          "datasource": "$datasource",
-         "fill": 1,
+         "fill": 10,
          "fillGradient": 0,
          "gridPos": {
             "h": 10,
@@ -525,7 +525,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -533,7 +533,7 @@
          "repeat": null,
          "seriesOverrides": [ ],
          "spaceLength": 10,
-         "stack": false,
+         "stack": true,
          "steppedLine": false,
          "targets": [
             {

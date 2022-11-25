@@ -2,9 +2,7 @@
    "__inputs": [ ],
    "__requires": [ ],
    "annotations": {
-      "list": [
-         { }
-      ]
+      "list": [ ]
    },
    "description": "A dashboard that monitors Django which focuses on giving a overview for the system (requests, db, cache). It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).",
    "editable": true,
@@ -361,7 +359,7 @@
          "pluginVersion": "7",
          "targets": [
             {
-               "expr": "max (\n  django_migrations_applied_total {\n      namespace=\"namespace\",\n      job=\"job\"\n  }\n) by (namespace, job)\n",
+               "expr": "max (\n  django_migrations_applied_total {\n      namespace=\"$namespace\",\n      job=\"$job\"\n  }\n) by (namespace, job)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "",
@@ -419,7 +417,7 @@
          "pluginVersion": "7",
          "targets": [
             {
-               "expr": "max (\n  django_migrations_unapplied_total {\n      namespace=\"namespace\",\n      job=\"$job\"\n  }\n) by (namespace, job)\n",
+               "expr": "max (\n  django_migrations_unapplied_total {\n      namespace=\"$namespace\",\n      job=\"$job\"\n  }\n) by (namespace, job)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "",
@@ -690,10 +688,10 @@
          "dashLength": 10,
          "dashes": false,
          "datasource": "$datasource",
-         "fill": 1,
+         "fill": 10,
          "fillGradient": 0,
          "gridPos": {
-            "h": 4,
+            "h": 6,
             "w": 24,
             "x": 0,
             "y": 25
@@ -715,7 +713,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -723,7 +721,7 @@
          "repeat": null,
          "seriesOverrides": [ ],
          "spaceLength": 10,
-         "stack": false,
+         "stack": true,
          "steppedLine": false,
          "targets": [
             {

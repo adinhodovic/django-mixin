@@ -116,7 +116,7 @@
                      }
                   ]
                },
-               "unit": "reqps"
+               "unit": "none"
             }
          },
          "gridPos": {
@@ -427,25 +427,32 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        status=~\"2.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        status=~\"2.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "2xx",
                "refId": "A"
             },
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        status=~\"4.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        status=~\"3.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
-               "legendFormat": "4xx",
+               "legendFormat": "3xx",
                "refId": "B"
             },
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view!~\"health_check:health_check_home|prometheus-django-metrics\",\n        status=~\"5.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        status=~\"4.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
+               "format": "time_series",
+               "intervalFactor": 2,
+               "legendFormat": "4xx",
+               "refId": "C"
+            },
+            {
+               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        status=~\"5.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "5xx",
-               "refId": "C"
+               "refId": "D"
             }
          ],
          "thresholds": [ ],
@@ -509,7 +516,7 @@
          "dashLength": 10,
          "dashes": false,
          "datasource": "$datasource",
-         "fill": 1,
+         "fill": 10,
          "fillGradient": 0,
          "gridPos": {
             "h": 8,
@@ -534,7 +541,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -542,7 +549,7 @@
          "repeat": null,
          "seriesOverrides": [ ],
          "spaceLength": 10,
-         "stack": false,
+         "stack": true,
          "steppedLine": false,
          "targets": [
             {

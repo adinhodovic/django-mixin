@@ -1,3 +1,6 @@
+local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
+local annotation = grafana.annotation;
+
 {
   _config+:: {
     djangoSelector: 'job=~"django"',
@@ -30,5 +33,18 @@
       datasource: '-- Grafana --',
       tags: [],
     },
+
+    customAnnotation:: if $._config.annotation.enabled then
+      annotation.datasource(
+        'Deployment',
+        datasource=$._config.annotation.datasource,
+        hide=false,
+      ) + {
+        target: {
+          matchAny: true,
+          tags: $._config.annotation.tags,
+          type: 'tags',
+        },
+      } else {},
   },
 }

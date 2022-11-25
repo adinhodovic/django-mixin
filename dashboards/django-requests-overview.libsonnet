@@ -76,7 +76,7 @@ local paginateTable = {
         sort=1
       ),
 
-    local requestTemplates = [
+    local templates = [
       prometheusTemplate,
       namespaceTemplate,
       jobTemplate,
@@ -141,12 +141,12 @@ local paginateTable = {
                 job=~"$job",
               }[$__rate_interval]
           )
-        ) by (view, job, le)
+        ) by (job, le)
       )
     ||| % $._config,
     local requestBytesStatPanel =
       statPanel.new(
-        'Average Request Body Size (P95)',
+        'Request Body Size (P95)',
         datasource='$datasource',
         unit='decbytes',
         reducerFunction='lastNotNull',
@@ -173,7 +173,7 @@ local paginateTable = {
     ||| % $._config,
     local requestLatencyP95SummaryStatPanel =
       statPanel.new(
-        'Average Request Latency (P95)',
+        'Request Latency (P95)',
         datasource='$datasource',
         unit='s',
         reducerFunction='lastNotNull',
@@ -369,6 +369,9 @@ local paginateTable = {
         legend_avg=true,
         legend_max=true,
         legend_hideZero=true,
+        fill=10,
+        stack=true,
+        nullPointMode='null as zero'
       )
       .addTarget(
         prometheus.target(
@@ -404,6 +407,9 @@ local paginateTable = {
         legend_avg=true,
         legend_max=true,
         legend_hideZero=true,
+        stack=true,
+        fill=10,
+        nullPointMode='null as zero'
       )
       .addTarget(
         prometheus.target(
@@ -509,7 +515,7 @@ local paginateTable = {
       )
       .addTarget(prometheus.target(topHttpExceptionsByView1wQuery, format='table', instant=true)) + paginateTable,
 
-    local topResponsePerView1wQuery = |||
+    local topResponseByView1wQuery = |||
       round(
         topk(10,
           sum by (view) (
@@ -517,7 +523,6 @@ local paginateTable = {
               django_http_responses_total_by_status_view_method_total{
                 namespace=~"$namespace",
                 job=~"$job",
-                view=~"$view",
                 view!~"%(djangoIgnoredViews)s",
                 method=~"$method"
               }[1w]
@@ -526,9 +531,9 @@ local paginateTable = {
         )
       )
     ||| % $._config,
-    local topResponsePerView1wTable =
+    local topResponseByView1wTable =
       grafana.tablePanel.new(
-        'Top Responses Per View (1w)',
+        'Top Responses By View (1w)',
         datasource='$datasource',
         sort={
           col: 2,
@@ -547,7 +552,7 @@ local paginateTable = {
           },
         ]
       )
-      .addTarget(prometheus.target(topResponsePerView1wQuery, format='table', instant=true)) + paginateTable,
+      .addTarget(prometheus.target(topResponseByView1wQuery, format='table', instant=true)) + paginateTable,
 
 
     local topTemplates1wQuery = |||
@@ -633,10 +638,18 @@ local paginateTable = {
       .addPanel(weeklyBreakdownRow, gridPos={ h: 1, w: 24, x: 0, y: 26 })
       .addPanel(topHttpExceptionsByView1wTable, gridPos={ h: 8, w: 12, x: 0, y: 27 })
       .addPanel(topHttpExceptionsByType1wTable, gridPos={ h: 8, w: 12, x: 12, y: 27 })
-      .addPanel(topResponsePerView1wTable, gridPos={ h: 8, w: 12, x: 0, y: 35 })
+      .addPanel(topResponseByView1wTable, gridPos={ h: 8, w: 12, x: 0, y: 35 })
       .addPanel(topTemplates1wTable, gridPos={ h: 8, w: 12, x: 12, y: 35 })
-
       +
-      { templating+: { list+: requestTemplates } },
+      { templating+: { list+: templates } } +
+      if $._config.annotation.enabled then
+        {
+          annotations: {
+            list: [
+              $._config.customAnnotation,
+            ],
+          },
+        }
+      else {},
   },
 }

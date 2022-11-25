@@ -24,7 +24,7 @@
     "expr": |
       sum(
         rate(
-          django_http_responses_total_by_status_view_method_created{
+          django_http_responses_total_by_status_view_method_total{
             job=~"django",
             status=~"^4.*",
             view!~"health_check:health_check_home|prometheus-django-metrics"
@@ -34,7 +34,7 @@
       /
       sum(
         rate(
-          django_http_responses_total_by_status_view_method_created{
+          django_http_responses_total_by_status_view_method_total{
             job=~"django",
             view!~"health_check:health_check_home|prometheus-django-metrics"
           }[5m]
@@ -52,7 +52,7 @@
     "expr": |
       sum(
         rate(
-          django_http_responses_total_by_status_view_method_created{
+          django_http_responses_total_by_status_view_method_total{
             job=~"django",
             status=~"^5.*",
             view!~"health_check:health_check_home|prometheus-django-metrics"
@@ -62,7 +62,7 @@
       /
       sum(
         rate(
-          django_http_responses_total_by_status_view_method_created{
+          django_http_responses_total_by_status_view_method_total{
             job=~"django",
             view!~"health_check:health_check_home|prometheus-django-metrics"
           }[5m]

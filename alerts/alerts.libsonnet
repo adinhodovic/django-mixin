@@ -29,7 +29,7 @@
             expr: |||
               sum(
                 rate(
-                  django_http_responses_total_by_status_view_method_created{
+                  django_http_responses_total_by_status_view_method_total{
                     %(djangoSelector)s,
                     status=~"^4.*",
                     view!~"%(djangoIgnoredViews)s"
@@ -39,7 +39,7 @@
               /
               sum(
                 rate(
-                  django_http_responses_total_by_status_view_method_created{
+                  django_http_responses_total_by_status_view_method_total{
                     %(djangoSelector)s,
                     view!~"%(djangoIgnoredViews)s"
                   }[%(django4xxInterval)s]
@@ -62,7 +62,7 @@
             expr: |||
               sum(
                 rate(
-                  django_http_responses_total_by_status_view_method_created{
+                  django_http_responses_total_by_status_view_method_total{
                     %(djangoSelector)s,
                     status=~"^5.*",
                     view!~"%(djangoIgnoredViews)s"
@@ -72,7 +72,7 @@
               /
               sum(
                 rate(
-                  django_http_responses_total_by_status_view_method_created{
+                  django_http_responses_total_by_status_view_method_total{
                     %(djangoSelector)s,
                     view!~"%(djangoIgnoredViews)s"
                   }[%(django5xxInterval)s]

@@ -21,9 +21,9 @@ tests:
               dashboard_url: 'https://grafana.com/d/django-overview-jkwq/django-overview?var-job=django'
   - interval: 1m
     input_series:
-      - series: 'django_http_responses_total_by_status_view_method_created{job="django", view="alert-test", status="200"}'
+      - series: 'django_http_responses_total_by_status_view_method_total{job="django", view="alert-test", status="200"}'
         values: '1+10x10'
-      - series: 'django_http_responses_total_by_status_view_method_created{job="django", view="alert-test", status="403"}'
+      - series: 'django_http_responses_total_by_status_view_method_total{job="django", view="alert-test", status="403"}'
         values: '1+1x10'
     alert_rule_test:
       - eval_time: 10m
@@ -39,9 +39,9 @@ tests:
               dashboard_url: 'https://grafana.com/d/django-requests-by-view-jkwq/django-requests-by-view?var-job=django&var-view=alert-test'
   - interval: 1m
     input_series:
-      - series: 'django_http_responses_total_by_status_view_method_created{job="django", view="alert-test", status="200"}'
+      - series: 'django_http_responses_total_by_status_view_method_total{job="django", view="alert-test", status="200"}'
         values: '1+10x10'
-      - series: 'django_http_responses_total_by_status_view_method_created{job="django", view="alert-test", status="503"}'
+      - series: 'django_http_responses_total_by_status_view_method_total{job="django", view="alert-test", status="503"}'
         values: '1+1x10'
     alert_rule_test:
       - eval_time: 10m

@@ -30,14 +30,14 @@ local annotation = grafana.annotation;
     // Custom annotations to display in graphs
     annotation: {
       enabled: false,
-      name: 'Deploys'
+      name: 'Deploys',
       datasource: '-- Grafana --',
       tags: [],
     },
 
     customAnnotation:: if $._config.annotation.enabled then
       annotation.datasource(
-        $._config.annotation.deploys,
+        $._config.annotation.name,
         datasource=$._config.annotation.datasource,
         hide=false,
       ) + {

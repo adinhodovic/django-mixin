@@ -210,7 +210,7 @@ local paginateTable = {
         datasource='$datasource',
         sort={
           col: 3,
-          desc: false,
+          desc: true,
         },
         styles=[
           {
@@ -279,7 +279,7 @@ local paginateTable = {
         datasource='$datasource',
         sort={
           col: 3,
-          desc: false,
+          desc: true,
         },
         styles=[
           {

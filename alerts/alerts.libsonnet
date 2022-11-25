@@ -8,20 +8,20 @@
             alert: 'DjangoMigrationsUnapplied',
             expr: |||
               sum(
-                increase(
-                  django_migrations_unapplied_total{
-                    %(djangoSelector)s
-                  }[15m]
-                )
+                django_migrations_unapplied_total{
+                  %(djangoSelector)s
+                }
               ) by (namespace, job)
-              > 1
+              > 0
             ||| % $._config,
             labels: {
               severity: 'warning',
             },
+            'for': '15m',
             annotations: {
-              summary: 'Django unapplied migrations.',
+              summary: 'Django has unapplied migrations.',
               description: 'The job {{ $labels.job }} has unapplied migrations.',
+              dashboard_url: $._config.overviewDashboardUrl + '?var-job={{ $labels.job }}',
             },
           },
           {
@@ -50,7 +50,7 @@
             annotations: {
               summary: 'Django high HTTP 4xx error rate.',
               description: 'More than %(django4xxThreshold)s%% HTTP requests with status 4xx for {{ $labels.job }}/{{ $labels.view }} the past %(django4xxInterval)s.' % $._config,
-              dashboard_url: $._config.requestsByViewDashboardUid + '?var-job={{ $labels.job }}&var-view={{ $labels.view }}',
+              dashboard_url: $._config.requestsByViewDashboardUrl + '?var-job={{ $labels.job }}&var-view={{ $labels.view }}',
             },
             'for': '30s',
             labels: {
@@ -83,7 +83,7 @@
             annotations: {
               summary: 'Django high HTTP 5xx error rate.',
               description: 'More than %(django4xxThreshold)s%% HTTP requests with status 5xx for {{ $labels.job }}/{{ $labels.view }} the past %(django4xxInterval)s.' % $._config,
-              dashboard_url: $._config.requestsByViewDashboardUid + '?var-job={{ $labels.job }}&var-view={{ $labels.view }}',
+              dashboard_url: $._config.requestsByViewDashboardUrl + '?var-job={{ $labels.job }}&var-view={{ $labels.view }}',
             },
             'for': '30s',
             labels: {

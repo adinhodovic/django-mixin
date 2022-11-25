@@ -1,10 +1,15 @@
 {
   _config+:: {
-    djangoSelector: 'django',
+    djangoSelector: 'job=~"django"',
+
+    grafanaUrl: 'https://grafana.com',
 
     overviewDashboardUid: 'django-overview-jkwq',
     requestsOverviewDashboardUid: 'django-requests-jkwq',
     requestsByViewDashboardUid: 'django-requests-by-view-jkwq',
+
+    overviewDashboardUrl: '%s/d/%s/django-overview' % [self.grafanaUrl, self.overviewDashboardUid],
+    requestsByViewDashboardUrl: '%s/d/%s/django-requests-by-view' % [self.grafanaUrl, self.requestsByViewDashboardUid],
 
     tags: ['django', 'django-mixin'],
 

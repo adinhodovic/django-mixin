@@ -189,7 +189,7 @@ local statPanel = grafana.statPanel;
     local dbLatencyP50Query = |||
       histogram_quantile(0.50,
         sum(
-          rate(
+          irate(
             django_db_query_duration_seconds_bucket{
               namespace=~"$namespace",
               job=~"$job",
@@ -411,7 +411,7 @@ local statPanel = grafana.statPanel;
         description='A dashboard that monitors Django which focuses on giving a overview for the system (requests, db, cache). It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).',
         uid=$._config.overviewDashboardUid,
         tags=$._config.tags,
-        time_from='now-1h',
+        time_from='now-6h',
         editable=true,
         time_to='now',
         timezone='utc'

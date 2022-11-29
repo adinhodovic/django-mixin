@@ -24,6 +24,7 @@
               dashboard_url: $._config.overviewDashboardUrl + '?var-job={{ $labels.job }}',
             },
           },
+          // TODO(@adinhodovic): Db exception rule
           {
             alert: 'DjangoHighHttp4xxErrorRate',
             expr: |||

@@ -315,13 +315,13 @@ local statPanel = grafana.statPanel;
     local requestLatencyP50Query = |||
       histogram_quantile(0.50,
         sum(
-          rate(
+          irate(
             django_http_requests_latency_seconds_by_view_method_bucket{
               namespace=~"$namespace",
               job=~"$job",
               view="$view",
               method=~"$method"
-            }[$__range]
+            }[$__rate_interval]
           ) > 0
         ) by (view, le)
       )
@@ -389,7 +389,7 @@ local statPanel = grafana.statPanel;
         description='A dashboard that monitors Django which focuses on breaking down requests by view. It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).',
         uid=$._config.requestsByViewDashboardUid,
         tags=$._config.tags,
-        time_from='now-1h',
+        time_from='now-6h',
         editable=true,
         time_to='now',
         timezone='utc'

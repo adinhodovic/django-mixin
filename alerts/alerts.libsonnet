@@ -83,7 +83,7 @@
             ||| % $._config,
             annotations: {
               summary: 'Django high HTTP 5xx error rate.',
-              description: 'More than %(django4xxThreshold)s%% HTTP requests with status 5xx for {{ $labels.job }}/{{ $labels.view }} the past %(django4xxInterval)s.' % $._config,
+              description: 'More than %(django5xxThreshold)s%% HTTP requests with status 5xx for {{ $labels.job }}/{{ $labels.view }} the past %(django5xxInterval)s.' % $._config,
               dashboard_url: $._config.requestsByViewDashboardUrl + '?var-job={{ $labels.job }}&var-view={{ $labels.view }}',
             },
             'for': '30s',

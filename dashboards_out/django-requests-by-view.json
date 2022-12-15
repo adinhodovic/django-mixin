@@ -409,6 +409,8 @@
             "rightSide": true,
             "show": true,
             "sideWidth": null,
+            "sort": "avg",
+            "sortDesc": true,
             "total": false,
             "values": true
          },
@@ -535,6 +537,8 @@
             "rightSide": true,
             "show": true,
             "sideWidth": null,
+            "sort": "avg",
+            "sortDesc": true,
             "total": false,
             "values": true
          },
@@ -639,28 +643,28 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "histogram_quantile(0.50,\n  sum(\n    rate(\n      django_http_requests_latency_seconds_by_view_method_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        method=~\"$method\"\n      }[$__range]\n    ) > 0\n  ) by (view, le)\n)\n",
+               "expr": "histogram_quantile(0.50,\n  sum(\n    irate(\n      django_http_requests_latency_seconds_by_view_method_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        method=~\"$method\"\n      }[$__rate_interval]\n    ) > 0\n  ) by (view, le)\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "50 - {{ view }}",
                "refId": "A"
             },
             {
-               "expr": "histogram_quantile(0.95,\n  sum(\n    rate(\n      django_http_requests_latency_seconds_by_view_method_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        method=~\"$method\"\n      }[$__range]\n    ) > 0\n  ) by (view, le)\n)\n",
+               "expr": "histogram_quantile(0.95,\n  sum(\n    irate(\n      django_http_requests_latency_seconds_by_view_method_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        method=~\"$method\"\n      }[$__rate_interval]\n    ) > 0\n  ) by (view, le)\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "95 - {{ view }}",
                "refId": "B"
             },
             {
-               "expr": "histogram_quantile(0.99,\n  sum(\n    rate(\n      django_http_requests_latency_seconds_by_view_method_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        method=~\"$method\"\n      }[$__range]\n    ) > 0\n  ) by (view, le)\n)\n",
+               "expr": "histogram_quantile(0.99,\n  sum(\n    irate(\n      django_http_requests_latency_seconds_by_view_method_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        method=~\"$method\"\n      }[$__rate_interval]\n    ) > 0\n  ) by (view, le)\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "99 - {{ view }}",
                "refId": "C"
             },
             {
-               "expr": "histogram_quantile(0.999,\n  sum(\n    rate(\n      django_http_requests_latency_seconds_by_view_method_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        method=~\"$method\"\n      }[$__range]\n    ) > 0\n  ) by (view, le)\n)\n",
+               "expr": "histogram_quantile(0.999,\n  sum(\n    irate(\n      django_http_requests_latency_seconds_by_view_method_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        method=~\"$method\"\n      }[$__rate_interval]\n    ) > 0\n  ) by (view, le)\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "99.9 - {{ view }}",
@@ -814,7 +818,7 @@
       ]
    },
    "time": {
-      "from": "now-1h",
+      "from": "now-6h",
       "to": "now"
    },
    "timepicker": {

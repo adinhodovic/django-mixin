@@ -617,7 +617,7 @@ local paginateTable = {
         title='Weekly Breakdown',
       ),
 
-    'django-requests.json':
+    'django-requests-overview.json':
       dashboard.new(
         'Django / Requests / Overview',
         description='A dashboard that monitors Django which focuses on giving a overview for requests. It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).',

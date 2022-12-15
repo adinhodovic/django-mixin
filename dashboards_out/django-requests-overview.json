@@ -319,6 +319,8 @@
             "rightSide": true,
             "show": true,
             "sideWidth": null,
+            "sort": "avg",
+            "sortDesc": true,
             "total": false,
             "values": true
          },
@@ -519,6 +521,8 @@
             "rightSide": true,
             "show": true,
             "sideWidth": null,
+            "sort": "avg",
+            "sortDesc": true,
             "total": false,
             "values": true
          },

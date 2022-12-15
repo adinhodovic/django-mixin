@@ -222,6 +222,8 @@
             "rightSide": true,
             "show": true,
             "sideWidth": null,
+            "sort": "avg",
+            "sortDesc": true,
             "total": false,
             "values": true
          },
@@ -513,28 +515,28 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "histogram_quantile(0.50,\n  sum(\n    rate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
+               "expr": "histogram_quantile(0.50,\n  sum(\n    irate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "50 - {{ vendor }}",
                "refId": "A"
             },
             {
-               "expr": "histogram_quantile(0.95,\n  sum(\n    rate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
+               "expr": "histogram_quantile(0.95,\n  sum(\n    irate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "95 - {{ vendor }}",
                "refId": "B"
             },
             {
-               "expr": "histogram_quantile(0.99,\n  sum(\n    rate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
+               "expr": "histogram_quantile(0.99,\n  sum(\n    irate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "99 - {{ vendor }}",
                "refId": "C"
             },
             {
-               "expr": "histogram_quantile(0.999,\n  sum(\n    rate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
+               "expr": "histogram_quantile(0.999,\n  sum(\n    irate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "99.9 - {{ vendor }}",
@@ -707,6 +709,8 @@
             "rightSide": true,
             "show": true,
             "sideWidth": null,
+            "sort": "avg",
+            "sortDesc": true,
             "total": false,
             "values": true
          },
@@ -846,7 +850,7 @@
       ]
    },
    "time": {
-      "from": "now-1h",
+      "from": "now-6h",
       "to": "now"
    },
    "timepicker": {

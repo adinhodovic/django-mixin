@@ -46,3 +46,17 @@ monitoring stack.
 ## Alerts
 
 The mixin follows the [monitoring-mixins guidelines](https://github.com/monitoring-mixins/docs#guidelines-for-alert-names-labels-and-annotations) for alerts.
+
+### Dashboard Previews
+
+A dashboard that monitors Django which focuses on giving a overview for the system (requests, db, cache).
+
+![django-overview](images/django-overview.png)
+
+A dashboard that monitors Django which focuses on giving a overview for requests.
+
+![django-requests-overview](images/django-requests-overview.png)
+
+A dashboard that monitors Django which focuses on breaking down requests by view.
+
+![django-requests-by-view](images/django-requests-by-view.png)

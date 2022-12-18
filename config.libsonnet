@@ -17,7 +17,7 @@ local annotation = grafana.annotation;
     tags: ['django', 'django-mixin'],
 
     adminViewRegex: 'admin.*',
-    djangoIgnoredViews: 'health_check:health_check_home|prometheus-django-metrics',
+    djangoIgnoredViews: '<unnamed view>|health_check:health_check_home|prometheus-django-metrics',
     djangoIgnoredTemplates: "\\\\['health_check/index.html'\\\\]|None",
 
     django4xxSeverity: 'warning',

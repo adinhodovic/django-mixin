@@ -1,6 +1,22 @@
 # Prometheus Monitoring Mixin for Django
 
-A set of Grafana dashboards and Prometheus alerts for Django.
+A set of Grafana dashboards and Prometheus alerts for Django. [Blog post](https://hodovi.cc/blog/django-monitoring-with-prometheus-and-grafana/) covering Django monitoring with Prometheus and Grafana.
+
+## Dashboards
+
+- [Django Overview](https://grafana.com/grafana/dashboards/17617-django-overview/) - Django Overview, a simple overview of the database, cache and requests.
+
+![django-overview](images/django-overview.png)
+
+- [Django Requests Overview](https://grafana.com/grafana/dashboards/17616-django-requests-overview/) - Django request overview, providing insights of all requests filterable by view and method. Separate graphs for app and admin views, has as well weekly breakdowns for top templates, top exceptions by type, top exceptions by view and top responses by view.
+
+![django-requests-overview](images/django-requests-overview.png)
+
+- [Django Requests by View](https://grafana.com/grafana/dashboards/17613-django-requests-by-view/) - Django requests by view, a breakdown of requests by view that shows compute expensive metrics as latency buckets alongside requests, responses and status codes.
+
+![django-requests-by-view](images/django-requests-by-view.png)
+
+There are also generated dashboards in the `./dashboards_out` directory.
 
 ## How to use
 
@@ -12,6 +28,8 @@ You then have three options for deploying your dashboards
 1. Generate the config files and deploy them yourself
 2. Use jsonnet to deploy this mixin along with Prometheus and Grafana
 3. Use prometheus-operator to deploy this mixin
+
+Or import the dashboard using json in `./dashboards_out`, alternatively import them from the `Grafana.com` dashboard page.
 
 ## Generate config files
 
@@ -46,17 +64,3 @@ monitoring stack.
 ## Alerts
 
 The mixin follows the [monitoring-mixins guidelines](https://github.com/monitoring-mixins/docs#guidelines-for-alert-names-labels-and-annotations) for alerts.
-
-### Dashboard Previews
-
-A dashboard that monitors Django which focuses on giving a overview for the system (requests, db, cache).
-
-![django-overview](images/django-overview.png)
-
-A dashboard that monitors Django which focuses on giving a overview for requests.
-
-![django-requests-overview](images/django-requests-overview.png)
-
-A dashboard that monitors Django which focuses on breaking down requests by view.
-
-![django-requests-by-view](images/django-requests-by-view.png)

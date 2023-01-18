@@ -24,7 +24,27 @@
               dashboard_url: $._config.overviewDashboardUrl + '?var-job={{ $labels.job }}',
             },
           },
-          // TODO(@adinhodovic): Db exception rule
+          {
+            alert: 'DjangoDatabaseException',
+            expr: |||
+              sum (
+                increase(
+                  django_db_errors_total{
+                    %(djangoSelector)s
+                  }[10m]
+                )
+              ) by (type, namespace, job)
+              > 0
+            ||| % $._config,
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              summary: 'Django database exception.',
+              description: 'The job {{ $labels.job }} has hit the database exception {{ $labels.type }}.',
+              dashboard_url: $._config.overviewDashboardUrl + '?var-job={{ $labels.job }}',
+            },
+          },
           {
             alert: 'DjangoHighHttp4xxErrorRate',
             expr: |||

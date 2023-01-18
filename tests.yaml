@@ -21,6 +21,22 @@ tests:
               dashboard_url: 'https://grafana.com/d/django-overview-jkwq/django-overview?var-job=django'
   - interval: 1m
     input_series:
+      - series: 'django_db_errors_total{job="django", type="IntegrityError"}'
+        values: '1+1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: DjangoDatabaseException
+        exp_alerts:
+          - exp_labels:
+              job: django
+              severity: warning
+              type: IntegrityError
+            exp_annotations:
+              summary: 'Django database exception.'
+              description: 'The job django has hit the database exception IntegrityError.'
+              dashboard_url: 'https://grafana.com/d/django-overview-jkwq/django-overview?var-job=django'
+  - interval: 1m
+    input_series:
       - series: 'django_http_responses_total_by_status_view_method_total{job="django", view="alert-test", status="200"}'
         values: '1+10x10'
       - series: 'django_http_responses_total_by_status_view_method_total{job="django", view="alert-test", status="403"}'

@@ -16,6 +16,22 @@
     "for": "15m"
     "labels":
       "severity": "warning"
+  - "alert": "DjangoDatabaseException"
+    "annotations":
+      "dashboard_url": "https://grafana.com/d/django-overview-jkwq/django-overview?var-job={{ $labels.job }}"
+      "description": "The job {{ $labels.job }} has hit the database exception {{ $labels.type }}."
+      "summary": "Django database exception."
+    "expr": |
+      sum (
+        increase(
+          django_db_errors_total{
+            job=~"django"
+          }[10m]
+        )
+      ) by (type, namespace, job)
+      > 0
+    "labels":
+      "severity": "warning"
   - "alert": "DjangoHighHttp4xxErrorRate"
     "annotations":
       "dashboard_url": "https://grafana.com/d/django-requests-by-view-jkwq/django-requests-by-view?var-job={{ $labels.job }}&var-view={{ $labels.view }}"
@@ -27,7 +43,7 @@
           django_http_responses_total_by_status_view_method_total{
             job=~"django",
             status=~"^4.*",
-            view!~"health_check:health_check_home|prometheus-django-metrics"
+            view!~"<unnamed view>|health_check:health_check_home|prometheus-django-metrics"
           }[5m]
         )
       )  by (namespace, job, view)
@@ -36,12 +52,11 @@
         rate(
           django_http_responses_total_by_status_view_method_total{
             job=~"django",
-            view!~"health_check:health_check_home|prometheus-django-metrics"
+            view!~"<unnamed view>|health_check:health_check_home|prometheus-django-metrics"
           }[5m]
         )
       )  by (namespace, job, view)
       * 100 > 5
-    "for": "30s"
     "labels":
       "severity": "warning"
   - "alert": "DjangoHighHttp5xxErrorRate"
@@ -55,7 +70,7 @@
           django_http_responses_total_by_status_view_method_total{
             job=~"django",
             status=~"^5.*",
-            view!~"health_check:health_check_home|prometheus-django-metrics"
+            view!~"<unnamed view>|health_check:health_check_home|prometheus-django-metrics"
           }[5m]
         )
       )  by (namespace, job, view)
@@ -64,11 +79,10 @@
         rate(
           django_http_responses_total_by_status_view_method_total{
             job=~"django",
-            view!~"health_check:health_check_home|prometheus-django-metrics"
+            view!~"<unnamed view>|health_check:health_check_home|prometheus-django-metrics"
           }[5m]
         )
       )  by (namespace, job, view)
       * 100 > 5
-    "for": "30s"
     "labels":
       "severity": "warning"

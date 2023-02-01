@@ -196,7 +196,7 @@ local paginateTable = {
               view!~"%(djangoIgnoredViews)s|",
               view!~"%(adminViewRegex)s",
               method=~"$method"
-            }[$__range]
+            }[$__rate_interval]
           ) > 0
         ) by (view, job, le)
       )

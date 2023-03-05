@@ -557,7 +557,7 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        method=~\"$method\",\n      }[5m]\n    ) > 0\n  ) by (namespace, job, view, status, method), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        method=~\"$method\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (namespace, job, view, status, method), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "{{ view }} / {{ status }} / {{ method }}",
@@ -724,7 +724,7 @@
                "value": "Prometheus"
             },
             "hide": 0,
-            "label": null,
+            "label": "Data Source",
             "name": "datasource",
             "options": [ ],
             "query": "prometheus",

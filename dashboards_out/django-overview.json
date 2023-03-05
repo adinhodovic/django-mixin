@@ -622,7 +622,7 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "round(\n  sum(\n    increase(\n      django_db_new_connections_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[5m]\n    ) > 0\n  ) by (namespace, job, vendor)\n)\n",
+               "expr": "round(\n  sum(\n    increase(\n      django_db_new_connections_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (namespace, job, vendor)\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "{{ vendor }}",
@@ -632,7 +632,7 @@
          "thresholds": [ ],
          "timeFrom": null,
          "timeShift": null,
-         "title": "DB Connections [5m]",
+         "title": "DB Connections",
          "tooltip": {
             "shared": true,
             "sort": 0,
@@ -796,7 +796,7 @@
                "value": "Prometheus"
             },
             "hide": 0,
-            "label": null,
+            "label": "Data Source",
             "name": "datasource",
             "options": [ ],
             "query": "prometheus",

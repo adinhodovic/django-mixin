@@ -18,6 +18,7 @@ local paginateTable = {
         'datasource',
         'prometheus',
         'Prometheus',
+        label='Data Source',
         hide='',
       ),
 

@@ -1,28 +1,78 @@
-JSONNET_FMT := jsonnetfmt -n 2 --max-blank-lines 2 --string-style s --comment-style s
+BIN_DIR ?= $(shell pwd)/tmp/bin
 
-all: fmt prometheus-alerts.yaml dashboards_out lint
+JSONNET_VENDOR=vendor
+GRAFANA_DASHBOARD_LINTER_BIN=$(BIN_DIR)/dashboard-linter
+JB_BIN=$(BIN_DIR)/jb
+JSONNET_BIN=$(BIN_DIR)/jsonnet
+JSONNETLINT_BIN=$(BIN_DIR)/jsonnet-lint
+JSONNETFMT_BIN=$(BIN_DIR)/jsonnetfmt
+PROMTOOL_BIN=$(BIN_DIR)/promtool
+TOOLING=$(JB_BIN) $(JSONNETLINT_BIN) $(JSONNET_BIN) $(JSONNETFMT_BIN) $(PROMTOOL_BIN) $(GRAFANA_DASHBOARD_LINTER_BIN)
+JSONNETFMT_ARGS=-n 2 --max-blank-lines 2 --string-style s --comment-style s
+SRC_DIR ?=dashboards
+OUT_DIR ?=dashboards_out
 
-fmt:
+.PHONY: all
+all: fmt generate lint test
+
+.PHONY: generate
+generate: prometheus_alerts.yaml $(OUT_DIR) # prometheus_rules.yaml
+
+$(JSONNET_VENDOR): $(JB_BIN) jsonnetfile.json
+	$(JB_BIN) install
+
+.PHONY: fmt
+fmt: $(JSONNETFMT_BIN)
 	find . -name 'vendor' -prune -o -name '*.libsonnet' -print -o -name '*.jsonnet' -print | \
-		xargs -n 1 -- $(JSONNET_FMT) -i
+		xargs -n 1 -- $(JSONNETFMT_BIN) $(JSONNETFMT_ARGS) -i
 
-prometheus-alerts.yaml: mixin.libsonnet config.libsonnet $(wildcard alerts/*)
-	jsonnet -S alerts.jsonnet > $@
+prometheus_alerts.yaml: $(JSONNET_BIN) mixin.libsonnet lib/alerts.jsonnet alerts/*.libsonnet
+	@$(JSONNET_BIN) -J vendor -S lib/alerts.jsonnet > $@
 
-dashboards_out: mixin.libsonnet config.libsonnet $(wildcard dashboards/*)
-	@mkdir -p dashboards_out
-	jsonnet -J vendor -m dashboards_out dashboards.jsonnet
+prometheus_rules.yaml: $(JSONNET_BIN) mixin.libsonnet lib/rules.jsonnet rules/*.libsonnet
+	@$(JSONNET_BIN) -J vendor -S lib/rules.jsonnet > $@
 
-lint: prometheus-alerts.yaml
-	find . -name 'vendor' -prune -o -name '*.libsonnet' -print -o -name '*.jsonnet' -print | \
-		while read f; do \
-			$(JSONNET_FMT) "$$f" | diff -u "$$f" -; \
-		done
+$(OUT_DIR): $(JSONNET_BIN) $(JSONNET_VENDOR) mixin.libsonnet lib/dashboards.jsonnet $(SRC_DIR)/*.libsonnet
+	@mkdir -p $(OUT_DIR)
+	@$(JSONNET_BIN) -J vendor -m $(OUT_DIR) lib/dashboards.jsonnet
 
-	promtool check rules prometheus-alerts.yaml
+.PHONY: lint
+lint: jsonnet-lint alerts-lint dashboards-lint
 
-test: prometheus-alerts.yaml
-	promtool test rules tests.yaml
+.PHONY: jsonnet-lint
+jsonnet-lint: $(JSONNETLINT_BIN) $(JSONNET_VENDOR)
+	@find . -name 'vendor' -prune -o -name '*.libsonnet' -print -o -name '*.jsonnet' -print | \
+		xargs -n 1 -- $(JSONNETLINT_BIN) -J vendor
 
+
+.PHONY: alerts-lint
+alerts-lint: $(PROMTOOL_BIN) prometheus_alerts.yaml # prometheus_rules.yaml
+	# @$(PROMTOOL_BIN) check rules prometheus_rules.yaml
+	@$(PROMTOOL_BIN) check rules prometheus_alerts.yaml
+
+$(OUT_DIR)/.lint: $(OUT_DIR)
+	@cp .lint $@
+
+.PHONY: dashboards-lint
+dashboards-lint: $(GRAFANA_DASHBOARD_LINTER_BIN) $(OUT_DIR)/.lint
+	# Replace rates var with $$__rate_interval to make dashboard-linter happy.
+	@sed -i -e 's/1w/$$__rate_interval/g' $(OUT_DIR)/*.json
+	@find $(OUT_DIR) -name '*.json' -print0 | xargs -n 1 -0 $(GRAFANA_DASHBOARD_LINTER_BIN) lint --strict
+
+
+.PHONY: clean
 clean:
-	rm -rf dashboards_out prometheus-alerts.yaml
+	# Remove all files and directories ignored by git.
+	git clean -Xfd .
+
+.PHONY: test
+test: $(PROMTOOL_BIN) prometheus_alerts.yaml # prometheus_rules.yaml
+	@$(PROMTOOL_BIN) test rules tests.yaml
+
+$(BIN_DIR):
+	mkdir -p $(BIN_DIR)
+
+$(TOOLING): $(BIN_DIR)
+	@echo Installing tools from hack/tools.go
+	@cd scripts && go list -mod=mod -tags tools -f '{{ range .Imports }}{{ printf "%s\n" .}}{{end}}' ./ | xargs -tI % go build -mod=mod -o $(BIN_DIR) %
+

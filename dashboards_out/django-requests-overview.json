@@ -867,7 +867,7 @@
          ],
          "targets": [
             {
-               "expr": "topk(10,\n  round(\n    sum by (templatename) (\n      increase(\n        django_http_responses_total_by_templatename_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          templatename!~\"\\\\['health_check/index.html'\\\\]|None\"\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
+               "expr": "topk(10,\n  round(\n    sum by (templatename) (\n      increase(\n        django_http_responses_total_by_templatename_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          templatename!~\".*'health_check/index.html'.*|None\"\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
                "format": "table",
                "instant": true,
                "intervalFactor": 2,
@@ -897,7 +897,7 @@
                "value": "Prometheus"
             },
             "hide": 0,
-            "label": null,
+            "label": "Data Source",
             "name": "datasource",
             "options": [ ],
             "query": "prometheus",

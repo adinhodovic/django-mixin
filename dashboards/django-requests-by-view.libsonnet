@@ -14,6 +14,7 @@ local statPanel = grafana.statPanel;
         'datasource',
         'prometheus',
         'Prometheus',
+        label='Data Source',
         hide='',
       ),
 
@@ -281,7 +282,7 @@ local statPanel = grafana.statPanel;
               job=~"$job",
               view="$view",
               method=~"$method",
-            }[5m]
+            }[$__rate_interval]
           ) > 0
         ) by (namespace, job, view, status, method), 0.001
       )

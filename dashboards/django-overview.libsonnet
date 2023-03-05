@@ -14,6 +14,7 @@ local statPanel = grafana.statPanel;
         'datasource',
         'prometheus',
         'Prometheus',
+        label='Data Source',
         hide='',
       ),
 
@@ -247,14 +248,14 @@ local statPanel = grafana.statPanel;
             django_db_new_connections_total{
               namespace=~"$namespace",
               job=~"$job",
-            }[5m]
+            }[$__rate_interval]
           ) > 0
         ) by (namespace, job, vendor)
       )
     ||| % $._config,
     local dbConnectionsGraphPanel =
       graphPanel.new(
-        'DB Connections [5m]',
+        'DB Connections',
         datasource='$datasource',
         legend_show=true,
         legend_values=true,

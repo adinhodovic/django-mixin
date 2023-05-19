@@ -341,7 +341,7 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_requests_total_by_view_transport_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\"\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    rate(\n      django_http_requests_total_by_view_transport_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\"\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "reqps",
@@ -429,28 +429,28 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        status=~\"2.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    rate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        status=~\"2.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "2xx",
                "refId": "A"
             },
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        status=~\"3.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    rate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        status=~\"3.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "3xx",
                "refId": "B"
             },
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        status=~\"4.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    rate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        status=~\"4.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "4xx",
                "refId": "C"
             },
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        status=~\"5.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    rate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        status=~\"5.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "5xx",
@@ -557,7 +557,7 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "round(\n  sum(\n    irate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        method=~\"$method\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (namespace, job, view, status, method), 0.001\n)\n",
+               "expr": "round(\n  sum(\n    rate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view=\"$view\",\n        method=~\"$method\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (namespace, job, view, status, method), 0.001\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "{{ view }} / {{ status }} / {{ method }}",

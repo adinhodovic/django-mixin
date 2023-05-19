@@ -54,7 +54,7 @@ local statPanel = grafana.statPanel;
     local requestVolumeQuery = |||
       round(
         sum(
-          irate(
+          rate(
             django_http_requests_total_by_view_transport_method_total{
               namespace=~"$namespace",
               job=~"$job",
@@ -112,7 +112,7 @@ local statPanel = grafana.statPanel;
 
     local dbOpsQuery = |||
       sum (
-        irate (
+        rate (
           django_db_execute_total {
             namespace=~"$namespace",
             job=~"$job",
@@ -135,7 +135,7 @@ local statPanel = grafana.statPanel;
     local response2xxQuery = |||
       round(
         sum(
-          irate(
+          rate(
             django_http_responses_total_by_status_view_method_total{
               namespace=~"$namespace",
               job=~"$job",
@@ -274,7 +274,7 @@ local statPanel = grafana.statPanel;
 
     local cacheGetHitsQuery = |||
       sum(
-        irate(
+        rate(
           django_cache_get_hits_total{
             namespace=~"$namespace",
             job=~"$job",

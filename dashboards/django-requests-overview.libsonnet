@@ -88,7 +88,7 @@ local paginateTable = {
     local requestVolumeQuery = |||
       round(
         sum(
-          irate(
+          rate(
             django_http_requests_total_by_view_transport_method_total{namespace=~"$namespace", job=~"$job", view=~"$view", view!~"%(djangoIgnoredViews)s", method=~"$method"}[2m]
           )
         ), 0.001
@@ -162,7 +162,7 @@ local paginateTable = {
     local requestLatencyP95SummaryQuery = |||
       histogram_quantile(0.95,
         sum (
-          rate (
+          irate(
               django_http_requests_latency_seconds_by_view_method_bucket {
                 namespace=~"$namespace",
                 job=~"$job",
@@ -342,7 +342,7 @@ local paginateTable = {
     local apiResponse2xxQuery = |||
       round(
         sum(
-          irate(
+          rate(
             django_http_responses_total_by_status_view_method_total{
               namespace=~"$namespace",
               job=~"$job",

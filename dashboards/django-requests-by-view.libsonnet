@@ -178,7 +178,7 @@ local statPanel = grafana.statPanel;
     local requestQuery = |||
       round(
         sum(
-          irate(
+          rate(
             django_http_requests_total_by_view_transport_method_total{
               namespace=~"$namespace",
               job=~"$job",
@@ -214,7 +214,7 @@ local statPanel = grafana.statPanel;
     local response2xxQuery = |||
       round(
         sum(
-          irate(
+          rate(
             django_http_responses_total_by_status_view_method_total{
               namespace=~"$namespace",
               job=~"$job",
@@ -276,7 +276,7 @@ local statPanel = grafana.statPanel;
     local responseStatusCodesQuery = |||
       round(
         sum(
-          irate(
+          rate(
             django_http_responses_total_by_status_view_method_total{
               namespace=~"$namespace",
               job=~"$job",

@@ -37,7 +37,7 @@
               > 0
             ||| % $._config,
             labels: {
-              severity: 'warning',
+              severity: 'info',
             },
             annotations: {
               summary: 'Django database exception.',

@@ -29,7 +29,7 @@ tests:
         exp_alerts:
           - exp_labels:
               job: django
-              severity: warning
+              severity: info
               type: IntegrityError
             exp_annotations:
               summary: 'Django database exception.'

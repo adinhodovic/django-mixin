@@ -31,7 +31,7 @@
       ) by (type, namespace, job)
       > 0
     "labels":
-      "severity": "warning"
+      "severity": "info"
   - "alert": "DjangoHighHttp4xxErrorRate"
     "annotations":
       "dashboard_url": "https://grafana.com/d/django-requests-by-view-jkwq/django-requests-by-view?var-job={{ $labels.job }}&var-view={{ $labels.view }}"

@@ -221,12 +221,20 @@ local paginateTable = {
             pattern: 'Time',
           },
           {
+            alias: 'View',
+            pattern: 'view',
+            link: true,
+            linkTargetBlank: true,
+            linkTooltip: 'Go To View',
+            linkUrl: $._config.requestsByViewDashboardUrl + '?var-job=$job&var-namespace=$namespace&var-view=${__cell}',
+          },
+          {
             alias: 'Namespace',
             pattern: 'namespace',
           },
           {
             alias: 'Job',
-            pattern: 'Job',
+            pattern: 'job',
           },
           {
             alias: 'P50 Latency',

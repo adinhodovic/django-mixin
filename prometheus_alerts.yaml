@@ -57,6 +57,7 @@
         )
       )  by (namespace, job, view)
       * 100 > 5
+    "for": "1m"
     "labels":
       "severity": "warning"
   - "alert": "DjangoHighHttp5xxErrorRate"
@@ -84,5 +85,6 @@
         )
       )  by (namespace, job, view)
       * 100 > 5
+    "for": "1m"
     "labels":
       "severity": "warning"

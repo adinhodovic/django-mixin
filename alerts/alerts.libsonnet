@@ -68,6 +68,7 @@
               )  by (namespace, job, view)
               * 100 > %(django4xxThreshold)s
             ||| % $._config,
+            'for': '1m',
             annotations: {
               summary: 'Django high HTTP 4xx error rate.',
               description: 'More than %(django4xxThreshold)s%% HTTP requests with status 4xx for {{ $labels.job }}/{{ $labels.view }} the past %(django4xxInterval)s.' % $._config,
@@ -100,6 +101,7 @@
               )  by (namespace, job, view)
               * 100 > %(django5xxThreshold)s
             ||| % $._config,
+            'for': '1m',
             annotations: {
               summary: 'Django high HTTP 5xx error rate.',
               description: 'More than %(django5xxThreshold)s%% HTTP requests with status 5xx for {{ $labels.job }}/{{ $labels.view }} the past %(django5xxInterval)s.' % $._config,

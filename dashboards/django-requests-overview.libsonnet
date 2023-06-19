@@ -298,6 +298,14 @@ local paginateTable = {
             pattern: 'Time',
           },
           {
+            alias: 'View',
+            pattern: 'view',
+            link: true,
+            linkTargetBlank: true,
+            linkTooltip: 'Go To View',
+            linkUrl: $._config.requestsByViewDashboardUrl + '?var-job=$job&var-namespace=$namespace&var-view=${__cell}',
+          },
+          {
             alias: 'Namespace',
             pattern: 'namespace',
           },
@@ -518,6 +526,10 @@ local paginateTable = {
           {
             alias: 'View',
             pattern: 'view',
+            link: true,
+            linkTargetBlank: true,
+            linkTooltip: 'Go To View',
+            linkUrl: $._config.requestsByViewDashboardUrl + '?var-job=$job&var-namespace=$namespace&var-view=${__cell}',
           },
           {
             alias: 'Value',
@@ -562,6 +574,10 @@ local paginateTable = {
           {
             alias: 'View',
             pattern: 'view',
+            link: true,
+            linkTargetBlank: true,
+            linkTooltip: 'Go To View',
+            linkUrl: $._config.requestsByViewDashboardUrl + '?var-job=$job&var-namespace=$namespace&var-view=${__cell}',
           },
         ]
       )

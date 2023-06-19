@@ -630,6 +630,14 @@
                "type": "hidden"
             },
             {
+               "alias": "View",
+               "link": true,
+               "linkTargetBlank": true,
+               "linkTooltip": "Go To View",
+               "linkUrl": "https://grafana.com/d/django-requests-by-view-jkwq/django-requests-by-view?var-job=$job&var-namespace=$namespace&var-view=${__cell}",
+               "pattern": "view"
+            },
+            {
                "alias": "Namespace",
                "pattern": "namespace"
             },
@@ -731,6 +739,10 @@
             },
             {
                "alias": "View",
+               "link": true,
+               "linkTargetBlank": true,
+               "linkTooltip": "Go To View",
+               "linkUrl": "https://grafana.com/d/django-requests-by-view-jkwq/django-requests-by-view?var-job=$job&var-namespace=$namespace&var-view=${__cell}",
                "pattern": "view"
             },
             {
@@ -827,6 +839,10 @@
             },
             {
                "alias": "View",
+               "link": true,
+               "linkTargetBlank": true,
+               "linkTooltip": "Go To View",
+               "linkUrl": "https://grafana.com/d/django-requests-by-view-jkwq/django-requests-by-view?var-job=$job&var-namespace=$namespace&var-view=${__cell}",
                "pattern": "view"
             }
          ],

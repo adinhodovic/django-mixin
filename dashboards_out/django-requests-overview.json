@@ -753,7 +753,7 @@
          ],
          "targets": [
             {
-               "expr": "round(\n  topk(10,\n    sum by (view) (\n      increase(\n        django_http_exceptions_total_by_view_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          view!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\",\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
+               "expr": "round(\n  topk(10,\n    sum by (view) (\n      increase(\n        django_http_exceptions_total_by_view_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          view!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\",\n        }[$__rate_interval]\n      ) > 0\n    )\n  )\n)\n",
                "format": "table",
                "instant": true,
                "intervalFactor": 2,
@@ -763,7 +763,7 @@
          ],
          "timeFrom": null,
          "timeShift": null,
-         "title": "Top Exceptions by View (1w)",
+         "title": "Top Exceptions by View ($__rate_interval)",
          "type": "table"
       },
       {
@@ -801,7 +801,7 @@
          ],
          "targets": [
             {
-               "expr": "round(\n  topk(10,\n    sum by (type) (\n      increase(\n        django_http_exceptions_total_by_type_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
+               "expr": "round(\n  topk(10,\n    sum by (type) (\n      increase(\n        django_http_exceptions_total_by_type_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n        }[$__rate_interval]\n      ) > 0\n    )\n  )\n)\n",
                "format": "table",
                "instant": true,
                "intervalFactor": 2,
@@ -811,7 +811,7 @@
          ],
          "timeFrom": null,
          "timeShift": null,
-         "title": "Top Exceptions by Type (1w)",
+         "title": "Top Exceptions by Type ($__rate_interval)",
          "type": "table"
       },
       {
@@ -848,7 +848,7 @@
          ],
          "targets": [
             {
-               "expr": "round(\n  topk(10,\n    sum by (view) (\n      increase(\n        django_http_responses_total_by_status_view_method_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          view!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\",\n          method=~\"$method\"\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
+               "expr": "round(\n  topk(10,\n    sum by (view) (\n      increase(\n        django_http_responses_total_by_status_view_method_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          view!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\",\n          method=~\"$method\"\n        }[$__rate_interval]\n      ) > 0\n    )\n  )\n)\n",
                "format": "table",
                "instant": true,
                "intervalFactor": 2,
@@ -858,7 +858,7 @@
          ],
          "timeFrom": null,
          "timeShift": null,
-         "title": "Top Responses By View (1w)",
+         "title": "Top Responses By View ($__rate_interval)",
          "type": "table"
       },
       {
@@ -891,7 +891,7 @@
          ],
          "targets": [
             {
-               "expr": "topk(10,\n  round(\n    sum by (templatename) (\n      increase(\n        django_http_responses_total_by_templatename_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          templatename!~\".*'health_check/index.html'.*|None\"\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
+               "expr": "topk(10,\n  round(\n    sum by (templatename) (\n      increase(\n        django_http_responses_total_by_templatename_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n          templatename!~\".*'health_check/index.html'.*|None\"\n        }[$__rate_interval]\n      ) > 0\n    )\n  )\n)\n",
                "format": "table",
                "instant": true,
                "intervalFactor": 2,
@@ -901,7 +901,7 @@
          ],
          "timeFrom": null,
          "timeShift": null,
-         "title": "Top Templates (1w)",
+         "title": "Top Templates ($__rate_interval)",
          "type": "table"
       }
    ],

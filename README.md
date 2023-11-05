@@ -44,21 +44,21 @@ brew install jsonnet
 Then, grab the mixin and its dependencies:
 
 ```sh
-git clone https://github.com/danihodovic/django-exporter
-cd django-exporter/django-mixin
+git clone https://github.com/adinhodovic/django-exporter
+cd django-mixin
 jb install
 ```
 
 Finally, build the mixin:
 
 ```sh
-make prometheus-alerts.yaml
+make prometheus_alerts.yaml
 make dashboards_out
 ```
 
-The `prometheus-alerts.yaml` file then need to passed
+The `prometheus_alerts.yaml` file then need to passed
 to your Prometheus server, and the files in `dashboards_out` need to be imported
-into you Grafana server.  The exact details will depending on how you deploy your
+into you Grafana server. The exact details will depending on how you deploy your
 monitoring stack.
 
 ## Alerts

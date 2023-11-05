@@ -459,7 +459,7 @@
          ],
          "targets": [
             {
-               "expr": "round(\n  topk(10,\n    sum by (type) (\n      increase(\n        django_db_errors_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n        }[$__rate_interval]\n      ) > 0\n    )\n  )\n)\n",
+               "expr": "round(\n  topk(10,\n    sum by (type) (\n      increase(\n        django_db_errors_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
                "format": "table",
                "instant": true,
                "intervalFactor": 2,
@@ -469,7 +469,7 @@
          ],
          "timeFrom": null,
          "timeShift": null,
-         "title": "Top Database Errors ($__rate_interval)",
+         "title": "Top Database Errors (1w)",
          "type": "table"
       },
       {

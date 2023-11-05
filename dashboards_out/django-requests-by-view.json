@@ -82,14 +82,14 @@
          "pluginVersion": "7",
          "targets": [
             {
-               "expr": "sum(\n  rate(\n    django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\", job=~\"$job\", view=\"$view\", method=~\"$method\", status!~\"[4-5].*\"}[$__rate_interval]\n    )\n) /\nsum(\n  rate(\n    django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\", job=~\"$job\", view=\"$view\", method=~\"$method\"}[$__rate_interval]\n  )\n)\n",
+               "expr": "sum(\n  rate(\n    django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\", job=~\"$job\", view=\"$view\", method=~\"$method\", status!~\"[4-5].*\"}[1w]\n    )\n) /\nsum(\n  rate(\n    django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\", job=~\"$job\", view=\"$view\", method=~\"$method\"}[1w]\n  )\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "",
                "refId": "A"
             }
          ],
-         "title": "Success Rate (non 4xx-5xx responses) [$__rate_interval]",
+         "title": "Success Rate (non 4xx-5xx responses) [1w]",
          "transparent": false,
          "type": "stat"
       },
@@ -144,14 +144,14 @@
          "pluginVersion": "7",
          "targets": [
             {
-               "expr": "sum by (view) (\n  increase(\n    django_http_exceptions_total_by_view_total{\n      namespace=~\"$namespace\",\n      job=~\"$job\",\n      view=\"$view\",\n    }[$__rate_interval]\n  ) > 0\n)\n",
+               "expr": "sum by (view) (\n  increase(\n    django_http_exceptions_total_by_view_total{\n      namespace=~\"$namespace\",\n      job=~\"$job\",\n      view=\"$view\",\n    }[1w]\n  ) > 0\n)\n",
                "format": "time_series",
                "intervalFactor": 2,
                "legendFormat": "",
                "refId": "A"
             }
          ],
-         "title": "HTTP Exceptions [$__rate_interval]",
+         "title": "HTTP Exceptions [1w]",
          "transparent": false,
          "type": "stat"
       },
@@ -213,7 +213,7 @@
                "refId": "A"
             }
          ],
-         "title": "Average Request Latency (P50) [$__rate_interval]",
+         "title": "Average Request Latency (P50) [1w]",
          "transparent": false,
          "type": "stat"
       },
@@ -275,7 +275,7 @@
                "refId": "A"
             }
          ],
-         "title": "Request Latency (P95) [$__rate_interval]",
+         "title": "Request Latency (P95) [1w]",
          "transparent": false,
          "type": "stat"
       },

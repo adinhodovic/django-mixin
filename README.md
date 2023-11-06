@@ -1,6 +1,6 @@
 # Prometheus Monitoring Mixin for Django
 
-A set of Grafana dashboards and Prometheus alerts for Django. [Blog post](https://hodovi.cc/blog/django-monitoring-with-prometheus-and-grafana/) covering Django monitoring with Prometheus and Grafana.
+A set of Grafana dashboards and Prometheus alerts for Django using the metrics from [Django Prometheus](https://github.com/korfuri/django-prometheus).
 
 ## Dashboards
 
@@ -44,7 +44,7 @@ brew install jsonnet
 Then, grab the mixin and its dependencies:
 
 ```sh
-git clone https://github.com/adinhodovic/django-exporter
+git clone https://github.com/adinhodovic/django-mixin
 cd django-mixin
 jb install
 ```

@@ -29,7 +29,6 @@ local tsOverride = tsStandardOptions.override;
 
 // Table
 local tbOptions = tablePanel.options;
-local tbStandardOptions = tablePanel.standardOptions;
 local tbQueryOptions = tablePanel.queryOptions;
 
 {

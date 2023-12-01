@@ -1,54 +1,77 @@
-local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
-local dashboard = grafana.dashboard;
-local row = grafana.row;
-local prometheus = grafana.prometheus;
-local template = grafana.template;
-local graphPanel = grafana.graphPanel;
-local statPanel = grafana.statPanel;
+local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
+
+local dashboard = g.dashboard;
+local row = g.panel.row;
+local grid = g.util.grid;
+
+local variable = dashboard.variable;
+local datasource = variable.datasource;
+local query = variable.query;
+local prometheus = g.query.prometheus;
+
+local statPanel = g.panel.stat;
+local timeSeriesPanel = g.panel.timeSeries;
+local tablePanel = g.panel.table;
+
+// Stat
+local stOptions = statPanel.options;
+local stStandardOptions = statPanel.standardOptions;
+local stQueryOptions = statPanel.queryOptions;
+
+// Timeseries
+local tsOptions = timeSeriesPanel.options;
+local tsStandardOptions = timeSeriesPanel.standardOptions;
+local tsQueryOptions = timeSeriesPanel.queryOptions;
+local tsFieldConfig = timeSeriesPanel.fieldConfig;
+local tsCustom = tsFieldConfig.defaults.custom;
+local tsLegend = tsOptions.legend;
+local tsOverride = tsStandardOptions.override;
+
+// Table
+local tbOptions = tablePanel.options;
+local tbQueryOptions = tablePanel.queryOptions;
 
 {
   grafanaDashboards+:: {
 
-    local prometheusTemplate =
-      template.datasource(
+    local datasourceVariable =
+      datasource.new(
         'datasource',
         'prometheus',
-        'Prometheus',
-        label='Data Source',
-        hide='',
-      ),
+      ) +
+      datasource.generalOptions.withLabel('Data Source'),
 
-    local namespaceTemplate =
-      template.new(
-        name='namespace',
-        label='Namespace',
-        datasource='$datasource',
-        query='label_values(django_http_responses_total_by_status_view_method_total{}, namespace)',
-        current='',
-        hide='',
-        refresh=1,
-        multi=false,
-        includeAll=false,
-        sort=1
-      ),
+    local namespaceVariable =
+      query.new(
+        'namespace',
+        'label_values(django_http_responses_total_by_status_view_method_total{}, namespace)'
+      ) +
+      query.withDatasourceFromVariable(datasourceVariable) +
+      query.withSort(1) +
+      query.generalOptions.withLabel('Namespace') +
+      query.selectionOptions.withMulti(false) +
+      query.selectionOptions.withIncludeAll(false) +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
 
-    local jobTemplate =
-      template.new(
-        name='job',
-        label='Job',
-        datasource='$datasource',
-        query='label_values(django_http_responses_total_by_status_view_method_total{namespace=~"$namespace"}, job)',
-        hide='',
-        refresh=1,
-        multi=false,
-        includeAll=false,
-        sort=1
-      ),
 
-    local templates = [
-      prometheusTemplate,
-      namespaceTemplate,
-      jobTemplate,
+    local jobVariable =
+      query.new(
+        'job',
+        'label_values(django_http_responses_total_by_status_view_method_total{namespace=~"$namespace"}, job)'
+      ) +
+      query.withDatasourceFromVariable(datasourceVariable) +
+      query.withSort(1) +
+      query.generalOptions.withLabel('Job') +
+      query.selectionOptions.withMulti(false) +
+      query.selectionOptions.withIncludeAll(false) +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
+
+    local variables = [
+      datasourceVariable,
+      namespaceVariable,
+      jobVariable,
     ],
 
     local requestVolumeQuery = |||
@@ -64,17 +87,24 @@ local statPanel = grafana.statPanel;
         ), 0.001
       )
     ||| % $._config,
+
     local requestVolumeStatPanel =
       statPanel.new(
         'Request Volume',
-        datasource='$datasource',
-        unit='reqps',
-        reducerFunction='lastNotNull',
-      )
-      .addTarget(prometheus.target(requestVolumeQuery))
-      .addThresholds([
-        { color: 'red', value: 0 },
-        { color: 'green', value: 0.001 },
+      ) +
+      stQueryOptions.withTargets(
+        prometheus.new(
+          '$datasource',
+          requestVolumeQuery,
+        )
+      ) +
+      stStandardOptions.withUnit('reqps') +
+      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
+      stStandardOptions.thresholds.withSteps([
+        stStandardOptions.threshold.step.withValue(0) +
+        stStandardOptions.threshold.step.withColor('red'),
+        stStandardOptions.threshold.step.withValue(0.1) +
+        stStandardOptions.threshold.step.withColor('green'),
       ]),
 
     local cacheHitrateQuery = |||
@@ -96,18 +126,24 @@ local statPanel = grafana.statPanel;
         )
       ) by (namespace, job)
     ||| % $._config,
+
     local cacheHitrateStatPanel =
       statPanel.new(
         'Cache Hitrate [30m]',
-        datasource='$datasource',
-        unit='percentunit',
-        reducerFunction='lastNotNull',
-      )
-      .addTarget(prometheus.target(cacheHitrateQuery))
-      .addThresholds([
-        // { color: 'red', value: 0.2 },
-        // { color: 'yellow', value: 0.5 },
-        { color: 'green', value: 0 },
+      ) +
+      stQueryOptions.withTargets(
+        prometheus.new(
+          '$datasource',
+          cacheHitrateQuery,
+        )
+      ) +
+      stStandardOptions.withUnit('percentunit') +
+      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
+      stStandardOptions.thresholds.withSteps([
+        stStandardOptions.threshold.step.withValue(0) +
+        stStandardOptions.threshold.step.withColor('red'),
+        stStandardOptions.threshold.step.withValue(0.1) +
+        stStandardOptions.threshold.step.withColor('green'),
       ]),
 
     local dbOpsQuery = |||
@@ -120,16 +156,24 @@ local statPanel = grafana.statPanel;
         )
       ) by (namespace, job)
     ||| % $._config,
+
     local dbOpsStatPanel =
       statPanel.new(
         'Database Ops',
-        datasource='$datasource',
-        reducerFunction='lastNotNull',
-        unit='ops'
-      )
-      .addTarget(prometheus.target(dbOpsQuery))
-      .addThresholds([
-        { color: 'green', value: 0 },
+      ) +
+      stQueryOptions.withTargets(
+        prometheus.new(
+          '$datasource',
+          dbOpsQuery,
+        )
+      ) +
+      stStandardOptions.withUnit('ops') +
+      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
+      stStandardOptions.thresholds.withSteps([
+        stStandardOptions.threshold.step.withValue(0) +
+        stStandardOptions.threshold.step.withColor('red'),
+        stStandardOptions.threshold.step.withValue(0.1) +
+        stStandardOptions.threshold.step.withColor('green'),
       ]),
 
     local response2xxQuery = |||
@@ -146,46 +190,80 @@ local statPanel = grafana.statPanel;
         ) by (job), 0.001
       )
     ||| % $._config,
+    local response3xxQuery = std.strReplace(response2xxQuery, '2.*', '3.*'),
     local response4xxQuery = std.strReplace(response2xxQuery, '2.*', '4.*'),
     local response5xxQuery = std.strReplace(response2xxQuery, '2.*', '5.*'),
 
-    local responseGraphPanel =
-      graphPanel.new(
+    local responseTimeSeriesPanel =
+      timeSeriesPanel.new(
         'Responses',
-        datasource='$datasource',
-        format='reqps',
-        legend_show=true,
-        legend_values=true,
-        legend_alignAsTable=true,
-        legend_rightSide=true,
-        legend_avg=true,
-        legend_max=true,
-        legend_hideZero=true,
-        legend_sort='avg',
-        legend_sortDesc=true,
-        fill=10,
-        stack=true,
-        percentage=true,
-        nullPointMode='null as zero'
-      )
-      .addTarget(
-        prometheus.target(
-          response2xxQuery,
-          legendFormat='2xx',
-        )
-      )
-      .addTarget(
-        prometheus.target(
-          response4xxQuery,
-          legendFormat='4xx',
-        )
-      )
-      .addTarget(
-        prometheus.target(
-          response5xxQuery,
-          legendFormat='5xx',
-        )
-      ),
+      ) +
+      tsQueryOptions.withTargets(
+        [
+          prometheus.new(
+            '$datasource',
+            response2xxQuery,
+          ) +
+          prometheus.withLegendFormat(
+            '2xx'
+          ),
+          prometheus.new(
+            '$datasource',
+            response3xxQuery,
+          ) +
+          prometheus.withLegendFormat(
+            '3xx'
+          ),
+          prometheus.new(
+            '$datasource',
+            response4xxQuery,
+          ) +
+          prometheus.withLegendFormat(
+            '4xx'
+          ),
+          prometheus.new(
+            '$datasource',
+            response5xxQuery,
+          ) +
+          prometheus.withLegendFormat(
+            '5xx'
+          ),
+        ]
+      ) +
+      tsStandardOptions.withUnit('reqps') +
+      tsOptions.tooltip.withMode('multi') +
+      tsOptions.tooltip.withSort('desc') +
+      tsStandardOptions.withOverrides([
+        tsOverride.byName.new('2xx') +
+        tsOverride.byName.withPropertiesFromOptions(
+          tsStandardOptions.color.withMode('fixed') +
+          tsStandardOptions.color.withFixedColor('green')
+        ),
+        tsOverride.byName.new('3xx') +
+        tsOverride.byName.withPropertiesFromOptions(
+          tsStandardOptions.color.withMode('fixed') +
+          tsStandardOptions.color.withFixedColor('blue')
+        ),
+        tsOverride.byName.new('4xx') +
+        tsOverride.byName.withPropertiesFromOptions(
+          tsStandardOptions.color.withMode('fixed') +
+          tsStandardOptions.color.withFixedColor('yellow')
+        ),
+        tsOverride.byName.new('5xx') +
+        tsOverride.byName.withPropertiesFromOptions(
+          tsStandardOptions.color.withMode('fixed') +
+          tsStandardOptions.color.withFixedColor('red')
+        ),
+      ]) +
+      tsLegend.withShowLegend(true) +
+      tsLegend.withDisplayMode('table') +
+      tsLegend.withPlacement('right') +
+      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
+      tsLegend.withSortBy('Mean') +
+      tsLegend.withSortDesc(true) +
+      tsCustom.stacking.withMode('percent') +
+      tsCustom.withFillOpacity(100) +
+      tsCustom.withSpanNulls(false),
 
     local dbLatencyP50Query = |||
       histogram_quantile(0.50,
@@ -203,43 +281,53 @@ local statPanel = grafana.statPanel;
     local dbLatencyP99Query = std.strReplace(dbLatencyP50Query, '0.50', '0.99'),
     local dbLatencyP999Query = std.strReplace(dbLatencyP50Query, '0.50', '0.999'),
 
-    local dbLatencyGraphPanel =
-      graphPanel.new(
-        'DB Latency',
-        datasource='$datasource',
-        format='s',
-        legend_show=true,
-        legend_values=true,
-        legend_alignAsTable=true,
-        legend_rightSide=true,
-        legend_avg=true,
-        legend_max=true,
-        legend_hideZero=true,
-      )
-      .addTarget(
-        prometheus.target(
-          dbLatencyP50Query,
-          legendFormat='50 - {{ vendor }}',
-        )
-      )
-      .addTarget(
-        prometheus.target(
-          dbLatencyP95Query,
-          legendFormat='95 - {{ vendor }}',
-        )
-      )
-      .addTarget(
-        prometheus.target(
-          dbLatencyP99Query,
-          legendFormat='99 - {{ vendor }}',
-        )
-      )
-      .addTarget(
-        prometheus.target(
-          dbLatencyP999Query,
-          legendFormat='99.9 - {{ vendor }}',
-        )
-      ),
+    local dbLatencyTimeSeriesPanel =
+      timeSeriesPanel.new(
+        'Database Latency',
+      ) +
+      tsQueryOptions.withTargets(
+        [
+          prometheus.new(
+            '$datasource',
+            dbLatencyP50Query,
+          ) +
+          prometheus.withLegendFormat(
+            '50 - {{ vendor }}',
+          ),
+          prometheus.new(
+            '$datasource',
+            dbLatencyP95Query,
+          ) +
+          prometheus.withLegendFormat(
+            '95 - {{ vendor }}',
+          ),
+          prometheus.new(
+            '$datasource',
+            dbLatencyP99Query,
+          ) +
+          prometheus.withLegendFormat(
+            '99 - {{ vendor }}',
+          ),
+          prometheus.new(
+            '$datasource',
+            dbLatencyP999Query,
+          ) +
+          prometheus.withLegendFormat(
+            '99.9 - {{ vendor }}',
+          ),
+        ]
+      ) +
+      tsStandardOptions.withUnit('s') +
+      tsOptions.tooltip.withMode('multi') +
+      tsOptions.tooltip.withSort('desc') +
+      tsLegend.withShowLegend(true) +
+      tsLegend.withDisplayMode('table') +
+      tsLegend.withPlacement('right') +
+      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
+      tsLegend.withSortBy('Mean') +
+      tsLegend.withSortDesc(true) +
+      tsCustom.withFillOpacity(10) +
+      tsCustom.withSpanNulls(false),
 
     local dbConnectionsQuery = |||
       round(
@@ -253,67 +341,31 @@ local statPanel = grafana.statPanel;
         ) by (namespace, job, vendor)
       )
     ||| % $._config,
-    local dbConnectionsGraphPanel =
-      graphPanel.new(
-        'DB Connections',
-        datasource='$datasource',
-        legend_show=true,
-        legend_values=true,
-        legend_alignAsTable=true,
-        legend_rightSide=true,
-        legend_avg=true,
-        legend_max=true,
-        legend_hideZero=true,
-      )
-      .addTarget(
-        prometheus.target(
+
+    local dbConnectionsTimeSeriesPanel =
+      timeSeriesPanel.new(
+        'Database Connections',
+      ) +
+      tsQueryOptions.withTargets(
+        prometheus.new(
+          '$datasource',
           dbConnectionsQuery,
-          legendFormat='{{ vendor }}',
+        ) +
+        prometheus.withLegendFormat(
+          '{{ vendor }}'
         )
-      ),
-
-    local cacheGetHitsQuery = |||
-      sum(
-        rate(
-          django_cache_get_hits_total{
-            namespace=~"$namespace",
-            job=~"$job",
-          }[$__rate_interval]
-        ) > 0
-      ) by (namespace, job, backend)
-    ||| % $._config,
-    local cacheGetMissesQuery = std.strReplace(cacheGetHitsQuery, 'django_cache_get_hits_total', 'django_cache_get_misses_total'),
-
-    local cacheGetGraphPanel =
-      graphPanel.new(
-        'Cache Get',
-        datasource='$datasource',
-        format='ops',
-        legend_show=true,
-        legend_values=true,
-        legend_alignAsTable=true,
-        legend_rightSide=true,
-        legend_avg=true,
-        legend_max=true,
-        legend_hideZero=true,
-        legend_sort='avg',
-        legend_sortDesc=true,
-        stack=true,
-        fill=10,
-        nullPointMode='null as zero'
-      )
-      .addTarget(
-        prometheus.target(
-          cacheGetHitsQuery,
-          legendFormat='Hit - {{ backend }}',
-        )
-      )
-      .addTarget(
-        prometheus.target(
-          cacheGetMissesQuery,
-          legendFormat='Miss - {{ backend }}',
-        )
-      ),
+      ) +
+      tsStandardOptions.withUnit('short') +
+      tsOptions.tooltip.withMode('multi') +
+      tsOptions.tooltip.withSort('desc') +
+      tsLegend.withShowLegend(true) +
+      tsLegend.withDisplayMode('table') +
+      tsLegend.withPlacement('right') +
+      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
+      tsLegend.withSortBy('Mean') +
+      tsLegend.withSortDesc(true) +
+      tsCustom.withFillOpacity(10) +
+      tsCustom.withSpanNulls(false),
 
     local migrationsAppliedQuery = |||
       max (
@@ -323,15 +375,21 @@ local statPanel = grafana.statPanel;
         }
       ) by (namespace, job)
     ||| % $._config,
+
     local migrationsAppliedStatPanel =
       statPanel.new(
         'Migrations Applied',
-        datasource='$datasource',
-        reducerFunction='lastNotNull',
-      )
-      .addTarget(prometheus.target(migrationsAppliedQuery))
-      .addThresholds([
-        { color: 'green', value: 0 },
+      ) +
+      stQueryOptions.withTargets(
+        prometheus.new(
+          '$datasource',
+          migrationsAppliedQuery,
+        )
+      ) +
+      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
+      stStandardOptions.thresholds.withSteps([
+        stStandardOptions.threshold.step.withValue(0) +
+        stStandardOptions.threshold.step.withColor('green'),
       ]),
 
     local migrationsUnAppliedQuery = |||
@@ -342,16 +400,23 @@ local statPanel = grafana.statPanel;
         }
       ) by (namespace, job)
     ||| % $._config,
+
     local migrationsUnAppliedStatPanel =
       statPanel.new(
         'Migrations Unapplied',
-        datasource='$datasource',
-        reducerFunction='lastNotNull',
-      )
-      .addTarget(prometheus.target(migrationsUnAppliedQuery))
-      .addThresholds([
-        { color: 'green', value: 0 },
-        { color: 'red', value: 0.1 },
+      ) +
+      stQueryOptions.withTargets(
+        prometheus.new(
+          '$datasource',
+          migrationsUnAppliedQuery,
+        )
+      ) +
+      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
+      stStandardOptions.thresholds.withSteps([
+        stStandardOptions.threshold.step.withValue(0) +
+        stStandardOptions.threshold.step.withColor('green'),
+        stStandardOptions.threshold.step.withValue(0.1) +
+        stStandardOptions.threshold.step.withColor('red'),
       ]),
 
     local topDbErrors1wQuery = |||
@@ -368,28 +433,91 @@ local statPanel = grafana.statPanel;
         )
       )
     ||| % $._config,
+
     local topDbErrors1wTable =
-      grafana.tablePanel.new(
+      tablePanel.new(
         'Top Database Errors (1w)',
-        datasource='$datasource',
-        sort={
-          col: 2,
-          desc: true,
-        },
-        styles=[
+      ) +
+      tbOptions.withSortBy(
+        tbOptions.sortBy.withDisplayName('Type')
+      ) +
+      tbQueryOptions.withTargets(
+        prometheus.new(
+          '$datasource',
+          topDbErrors1wQuery,
+        ) +
+        prometheus.withFormat('table') +
+        prometheus.withInstant(true)
+      ) +
+      tbQueryOptions.withTransformations([
+        tbQueryOptions.transformation.withId(
+          'organize'
+        ) +
+        tbQueryOptions.transformation.withOptions(
           {
-            alias: 'Time',
-            dateFormat: 'YYYY-MM-DD HH:mm:ss',
-            type: 'hidden',
-            pattern: 'Time',
-          },
-          {
-            alias: 'Type',
-            pattern: 'type',
-          },
+            renameByName: {
+              namespace: 'Namespace',
+              job: 'Job',
+              type: 'Type',
+            },
+            indexByName: {
+              namespace: 0,
+              job: 1,
+              type: 2,
+            },
+            excludeByName: {
+              Time: true,
+            },
+          }
+        ),
+      ]),
+
+    local cacheGetHitsQuery = |||
+      sum(
+        rate(
+          django_cache_get_hits_total{
+            namespace=~"$namespace",
+            job=~"$job",
+          }[$__rate_interval]
+        ) > 0
+      ) by (namespace, job, backend)
+    ||| % $._config,
+    local cacheGetMissesQuery = std.strReplace(cacheGetHitsQuery, 'django_cache_get_hits_total', 'django_cache_get_misses_total'),
+
+    local cacheGetTimeSeriesPanel =
+      timeSeriesPanel.new(
+        'Cache Get',
+      ) +
+      tsQueryOptions.withTargets(
+        [
+          prometheus.new(
+            '$datasource',
+            cacheGetHitsQuery,
+          ) +
+          prometheus.withLegendFormat(
+            'Hit - {{ backend }}',
+          ),
+          prometheus.new(
+            '$datasource',
+            cacheGetMissesQuery,
+          ) +
+          prometheus.withLegendFormat(
+            'Miss - {{ backend }}',
+          ),
         ]
-      )
-      .addTarget(prometheus.target(topDbErrors1wQuery, format='table', instant=true)),
+      ) +
+      tsStandardOptions.withUnit('ops') +
+      tsOptions.tooltip.withMode('multi') +
+      tsOptions.tooltip.withSort('desc') +
+      tsLegend.withShowLegend(true) +
+      tsLegend.withDisplayMode('table') +
+      tsLegend.withPlacement('right') +
+      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
+      tsLegend.withSortBy('Mean') +
+      tsLegend.withSortDesc(true) +
+      tsCustom.stacking.withMode('percent') +
+      tsCustom.withFillOpacity(100) +
+      tsCustom.withSpanNulls(false),
 
     local summaryRow =
       row.new(
@@ -407,39 +535,88 @@ local statPanel = grafana.statPanel;
       ),
 
     'django-overview.json':
+      $._config.bypassDashboardValidation +
       dashboard.new(
         'Django / Overview',
-        description='A dashboard that monitors Django which focuses on giving a overview for the system (requests, db, cache). It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).',
-        uid=$._config.overviewDashboardUid,
-        tags=$._config.tags,
-        time_from='now-6h',
-        editable=true,
-        time_to='now',
-        timezone='utc'
-      )
-      .addPanel(summaryRow, gridPos={ h: 1, w: 24, x: 0, y: 0 })
-      .addPanel(requestVolumeStatPanel, gridPos={ h: 4, w: 12, x: 0, y: 1 })
-      .addPanel(dbOpsStatPanel, gridPos={ h: 4, w: 6, x: 12, y: 1 })
-      .addPanel(cacheHitrateStatPanel, gridPos={ h: 4, w: 6, x: 18, y: 1 })
-      .addPanel(responseGraphPanel, gridPos={ h: 6, w: 24, x: 0, y: 5 })
-      .addPanel(dbRow, gridPos={ h: 1, w: 24, x: 0, y: 11 })
-      .addPanel(migrationsAppliedStatPanel, gridPos={ h: 3, w: 6, x: 0, y: 12 })
-      .addPanel(migrationsUnAppliedStatPanel, gridPos={ h: 3, w: 6, x: 6, y: 12 })
-      .addPanel(topDbErrors1wTable, gridPos={ h: 9, w: 12, x: 0, y: 15 })
-      .addPanel(dbLatencyGraphPanel, gridPos={ h: 6, w: 12, x: 12, y: 12 })
-      .addPanel(dbConnectionsGraphPanel, gridPos={ h: 6, w: 12, x: 12, y: 18 })
-      .addPanel(cacheRow, gridPos={ h: 1, w: 24, x: 0, y: 24 })
-      .addPanel(cacheGetGraphPanel, gridPos={ h: 6, w: 24, x: 0, y: 25 })
-      +
-      { templating+: { list+: templates } } +
+      ) +
+      dashboard.withDescription('A dashboard that monitors Django which focuses on giving a overview for the system (requests, db, cache). It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).') +
+      dashboard.withUid($._config.overviewDashboardUid) +
+      dashboard.withTags($._config.tags) +
+      dashboard.withTimezone('utc') +
+      dashboard.withEditable(true) +
+      dashboard.time.withFrom('now-6h') +
+      dashboard.time.withTo('now') +
+      dashboard.withVariables(variables) +
+      dashboard.withLinks(
+        [
+          dashboard.link.dashboards.new('Django Dashboards', $._config.tags) +
+          dashboard.link.link.options.withTargetBlank(true),
+        ]
+      ) +
+      dashboard.withPanels(
+        [
+          summaryRow +
+          row.gridPos.withX(0) +
+          row.gridPos.withY(0) +
+          row.gridPos.withW(24) +
+          row.gridPos.withH(1),
+        ] +
+        grid.makeGrid(
+          [requestVolumeStatPanel, dbOpsStatPanel, cacheHitrateStatPanel],
+          panelWidth=8,
+          panelHeight=4,
+          startY=1
+        ) +
+        [
+          responseTimeSeriesPanel +
+          tablePanel.gridPos.withX(0) +
+          tablePanel.gridPos.withY(5) +
+          tablePanel.gridPos.withW(24) +
+          tablePanel.gridPos.withH(6),
+          dbRow +
+          row.gridPos.withX(0) +
+          row.gridPos.withY(11) +
+          row.gridPos.withW(24) +
+          row.gridPos.withH(1),
+          migrationsAppliedStatPanel +
+          tablePanel.gridPos.withX(0) +
+          tablePanel.gridPos.withY(12) +
+          tablePanel.gridPos.withW(6) +
+          tablePanel.gridPos.withH(3),
+          migrationsUnAppliedStatPanel +
+          tablePanel.gridPos.withX(6) +
+          tablePanel.gridPos.withY(12) +
+          tablePanel.gridPos.withW(6) +
+          tablePanel.gridPos.withH(3),
+          topDbErrors1wTable +
+          tablePanel.gridPos.withX(0) +
+          tablePanel.gridPos.withY(15) +
+          tablePanel.gridPos.withW(12) +
+          tablePanel.gridPos.withH(9),
+          dbConnectionsTimeSeriesPanel +
+          tablePanel.gridPos.withX(12) +
+          tablePanel.gridPos.withY(12) +
+          tablePanel.gridPos.withW(12) +
+          tablePanel.gridPos.withH(6),
+          dbLatencyTimeSeriesPanel +
+          tablePanel.gridPos.withX(12) +
+          tablePanel.gridPos.withY(18) +
+          tablePanel.gridPos.withW(12) +
+          tablePanel.gridPos.withH(6),
+          cacheRow +
+          tablePanel.gridPos.withX(0) +
+          tablePanel.gridPos.withY(24) +
+          tablePanel.gridPos.withW(24) +
+          tablePanel.gridPos.withH(1),
+          cacheGetTimeSeriesPanel +
+          tablePanel.gridPos.withX(0) +
+          tablePanel.gridPos.withY(25) +
+          tablePanel.gridPos.withW(24) +
+          tablePanel.gridPos.withH(6),
+        ]
+      ) +
       if $._config.annotation.enabled then
-        {
-          annotations: {
-            list: [
-              $._config.customAnnotation,
-            ],
-          },
-        }
+        dashboard.withAnnotations($._config.customAnnotation)
       else {},
   },
 }

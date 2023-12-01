@@ -1,44 +1,39 @@
 {
    "__inputs": [ ],
    "__requires": [ ],
-   "annotations": {
-      "list": [ ]
-   },
    "description": "A dashboard that monitors Django which focuses on giving a overview for the system (requests, db, cache). It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).",
    "editable": true,
-   "gnetId": null,
-   "graphTooltip": 0,
-   "hideControls": false,
-   "id": null,
-   "links": [ ],
+   "links": [
+      {
+         "tags": [
+            "django",
+            "django-mixin"
+         ],
+         "targetBlank": true,
+         "title": "Django Dashboards",
+         "type": "dashboards"
+      }
+   ],
    "panels": [
       {
-         "collapse": false,
-         "collapsed": false,
          "gridPos": {
             "h": 1,
             "w": 24,
             "x": 0,
             "y": 0
          },
-         "id": 2,
-         "panels": [ ],
-         "repeat": null,
-         "repeatIteration": null,
-         "repeatRowId": null,
-         "showTitle": true,
+         "id": 1,
          "title": "Summary",
-         "titleSize": "h6",
          "type": "row"
       },
       {
-         "datasource": "$datasource",
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
          "fieldConfig": {
             "defaults": {
-               "links": [ ],
-               "mappings": [ ],
                "thresholds": {
-                  "mode": "absolute",
                   "steps": [
                      {
                         "color": "red",
@@ -46,7 +41,7 @@
                      },
                      {
                         "color": "green",
-                        "value": 0.001
+                        "value": 0.10000000000000001
                      }
                   ]
                },
@@ -55,52 +50,47 @@
          },
          "gridPos": {
             "h": 4,
-            "w": 12,
+            "w": 8,
             "x": 0,
             "y": 1
          },
-         "id": 3,
-         "links": [ ],
+         "id": 2,
          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
             "reduceOptions": {
                "calcs": [
                   "lastNotNull"
-               ],
-               "fields": "",
-               "values": false
-            },
-            "textMode": "auto"
+               ]
+            }
          },
-         "pluginVersion": "7",
+         "pluginVersion": "v10.1.0",
          "targets": [
             {
-               "expr": "round(\n  sum(\n    rate(\n      django_http_requests_total_by_view_transport_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\",\n      }[2m]\n    )\n  ), 0.001\n)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "",
-               "refId": "A"
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "round(\n  sum(\n    rate(\n      django_http_requests_total_by_view_transport_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\",\n      }[2m]\n    )\n  ), 0.001\n)\n"
             }
          ],
          "title": "Request Volume",
-         "transparent": false,
          "type": "stat"
       },
       {
-         "datasource": "$datasource",
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
          "fieldConfig": {
             "defaults": {
-               "links": [ ],
-               "mappings": [ ],
                "thresholds": {
-                  "mode": "absolute",
                   "steps": [
                      {
-                        "color": "green",
+                        "color": "red",
                         "value": 0
+                     },
+                     {
+                        "color": "green",
+                        "value": 0.10000000000000001
                      }
                   ]
                },
@@ -109,52 +99,47 @@
          },
          "gridPos": {
             "h": 4,
-            "w": 6,
-            "x": 12,
+            "w": 8,
+            "x": 8,
             "y": 1
          },
-         "id": 4,
-         "links": [ ],
+         "id": 3,
          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
             "reduceOptions": {
                "calcs": [
                   "lastNotNull"
-               ],
-               "fields": "",
-               "values": false
-            },
-            "textMode": "auto"
+               ]
+            }
          },
-         "pluginVersion": "7",
+         "pluginVersion": "v10.1.0",
          "targets": [
             {
-               "expr": "sum (\n  rate (\n    django_db_execute_total {\n      namespace=~\"$namespace\",\n      job=~\"$job\",\n    }[$__rate_interval]\n  )\n) by (namespace, job)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "",
-               "refId": "A"
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "sum (\n  rate (\n    django_db_execute_total {\n      namespace=~\"$namespace\",\n      job=~\"$job\",\n    }[$__rate_interval]\n  )\n) by (namespace, job)\n"
             }
          ],
          "title": "Database Ops",
-         "transparent": false,
          "type": "stat"
       },
       {
-         "datasource": "$datasource",
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
          "fieldConfig": {
             "defaults": {
-               "links": [ ],
-               "mappings": [ ],
                "thresholds": {
-                  "mode": "absolute",
                   "steps": [
                      {
-                        "color": "green",
+                        "color": "red",
                         "value": 0
+                     },
+                     {
+                        "color": "green",
+                        "value": 0.10000000000000001
                      }
                   ]
                },
@@ -163,177 +148,199 @@
          },
          "gridPos": {
             "h": 4,
-            "w": 6,
-            "x": 18,
+            "w": 8,
+            "x": 16,
             "y": 1
          },
-         "id": 5,
-         "links": [ ],
+         "id": 4,
          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
             "reduceOptions": {
                "calcs": [
                   "lastNotNull"
-               ],
-               "fields": "",
-               "values": false
-            },
-            "textMode": "auto"
+               ]
+            }
          },
-         "pluginVersion": "7",
+         "pluginVersion": "v10.1.0",
          "targets": [
             {
-               "expr": "sum (\n  rate (\n    django_cache_get_hits_total {\n      namespace=~\"$namespace\",\n      job=~\"$job\",\n    }[30m]\n  )\n) by (namespace, job)\n/\nsum (\n  rate (\n    django_cache_get_total {\n      namespace=~\"$namespace\",\n      job=~\"$job\",\n    }[30m]\n  )\n) by (namespace, job)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "",
-               "refId": "A"
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "sum (\n  rate (\n    django_cache_get_hits_total {\n      namespace=~\"$namespace\",\n      job=~\"$job\",\n    }[30m]\n  )\n) by (namespace, job)\n/\nsum (\n  rate (\n    django_cache_get_total {\n      namespace=~\"$namespace\",\n      job=~\"$job\",\n    }[30m]\n  )\n) by (namespace, job)\n"
             }
          ],
          "title": "Cache Hitrate [30m]",
-         "transparent": false,
          "type": "stat"
       },
       {
-         "aliasColors": { },
-         "bars": false,
-         "dashLength": 10,
-         "dashes": false,
-         "datasource": "$datasource",
-         "fill": 10,
-         "fillGradient": 0,
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 100,
+                  "spanNulls": false,
+                  "stacking": {
+                     "mode": "percent"
+                  }
+               },
+               "unit": "reqps"
+            },
+            "overrides": [
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "2xx"
+                  },
+                  "properties": [
+                     {
+                        "id": "color",
+                        "value": {
+                           "fixedColor": "green",
+                           "mode": "fixed"
+                        }
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "3xx"
+                  },
+                  "properties": [
+                     {
+                        "id": "color",
+                        "value": {
+                           "fixedColor": "blue",
+                           "mode": "fixed"
+                        }
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "4xx"
+                  },
+                  "properties": [
+                     {
+                        "id": "color",
+                        "value": {
+                           "fixedColor": "yellow",
+                           "mode": "fixed"
+                        }
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "5xx"
+                  },
+                  "properties": [
+                     {
+                        "id": "color",
+                        "value": {
+                           "fixedColor": "red",
+                           "mode": "fixed"
+                        }
+                     }
+                  ]
+               }
+            ]
+         },
          "gridPos": {
             "h": 6,
             "w": 24,
             "x": 0,
             "y": 5
          },
-         "id": 6,
-         "legend": {
-            "alignAsTable": true,
-            "avg": true,
-            "current": false,
-            "hideZero": true,
-            "max": true,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "sideWidth": null,
-            "sort": "avg",
-            "sortDesc": true,
-            "total": false,
-            "values": true
+         "id": 5,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "lastNotNull",
+                  "mean",
+                  "max"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Mean",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
-         "lines": true,
-         "linewidth": 1,
-         "links": [ ],
-         "nullPointMode": "null as zero",
-         "percentage": true,
-         "pointradius": 5,
-         "points": false,
-         "renderer": "flot",
-         "repeat": null,
-         "seriesOverrides": [ ],
-         "spaceLength": 10,
-         "stack": true,
-         "steppedLine": false,
+         "pluginVersion": "v10.1.0",
          "targets": [
             {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
                "expr": "round(\n  sum(\n    rate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\",\n        status=~\"2.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "2xx",
-               "refId": "A"
+               "legendFormat": "2xx"
             },
             {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "round(\n  sum(\n    rate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\",\n        status=~\"3.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
+               "legendFormat": "3xx"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
                "expr": "round(\n  sum(\n    rate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\",\n        status=~\"4.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "4xx",
-               "refId": "B"
+               "legendFormat": "4xx"
             },
             {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
                "expr": "round(\n  sum(\n    rate(\n      django_http_responses_total_by_status_view_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\",\n        status=~\"5.*\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (job), 0.001\n)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "5xx",
-               "refId": "C"
+               "legendFormat": "5xx"
             }
          ],
-         "thresholds": [ ],
-         "timeFrom": null,
-         "timeShift": null,
          "title": "Responses",
-         "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-         },
-         "type": "graph",
-         "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": [ ]
-         },
-         "yaxes": [
-            {
-               "format": "reqps",
-               "label": null,
-               "logBase": 1,
-               "max": null,
-               "min": null,
-               "show": true
-            },
-            {
-               "format": "reqps",
-               "label": null,
-               "logBase": 1,
-               "max": null,
-               "min": null,
-               "show": true
-            }
-         ]
+         "type": "timeseries"
       },
       {
-         "collapse": false,
-         "collapsed": false,
          "gridPos": {
             "h": 1,
             "w": 24,
             "x": 0,
             "y": 11
          },
-         "id": 7,
-         "panels": [ ],
-         "repeat": null,
-         "repeatIteration": null,
-         "repeatRowId": null,
-         "showTitle": true,
+         "id": 6,
          "title": "Database",
-         "titleSize": "h6",
          "type": "row"
       },
       {
-         "datasource": "$datasource",
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
          "fieldConfig": {
             "defaults": {
-               "links": [ ],
-               "mappings": [ ],
                "thresholds": {
-                  "mode": "absolute",
                   "steps": [
                      {
                         "color": "green",
                         "value": 0
                      }
                   ]
-               },
-               "unit": "none"
+               }
             }
          },
          "gridPos": {
@@ -342,44 +349,35 @@
             "x": 0,
             "y": 12
          },
-         "id": 8,
-         "links": [ ],
+         "id": 7,
          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
             "reduceOptions": {
                "calcs": [
                   "lastNotNull"
-               ],
-               "fields": "",
-               "values": false
-            },
-            "textMode": "auto"
+               ]
+            }
          },
-         "pluginVersion": "7",
+         "pluginVersion": "v10.1.0",
          "targets": [
             {
-               "expr": "max (\n  django_migrations_applied_total {\n      namespace=\"$namespace\",\n      job=\"$job\"\n  }\n) by (namespace, job)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "",
-               "refId": "A"
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "max (\n  django_migrations_applied_total {\n      namespace=\"$namespace\",\n      job=\"$job\"\n  }\n) by (namespace, job)\n"
             }
          ],
          "title": "Migrations Applied",
-         "transparent": false,
          "type": "stat"
       },
       {
-         "datasource": "$datasource",
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
          "fieldConfig": {
             "defaults": {
-               "links": [ ],
-               "mappings": [ ],
                "thresholds": {
-                  "mode": "absolute",
                   "steps": [
                      {
                         "color": "green",
@@ -390,8 +388,7 @@
                         "value": 0.10000000000000001
                      }
                   ]
-               },
-               "unit": "none"
+               }
             }
          },
          "gridPos": {
@@ -400,390 +397,288 @@
             "x": 6,
             "y": 12
          },
-         "id": 9,
-         "links": [ ],
+         "id": 8,
          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
             "reduceOptions": {
                "calcs": [
                   "lastNotNull"
-               ],
-               "fields": "",
-               "values": false
-            },
-            "textMode": "auto"
+               ]
+            }
          },
-         "pluginVersion": "7",
+         "pluginVersion": "v10.1.0",
          "targets": [
             {
-               "expr": "max (\n  django_migrations_unapplied_total {\n      namespace=\"$namespace\",\n      job=\"$job\"\n  }\n) by (namespace, job)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "",
-               "refId": "A"
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "max (\n  django_migrations_unapplied_total {\n      namespace=\"$namespace\",\n      job=\"$job\"\n  }\n) by (namespace, job)\n"
             }
          ],
          "title": "Migrations Unapplied",
-         "transparent": false,
          "type": "stat"
       },
       {
-         "columns": [ ],
-         "datasource": "$datasource",
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
          "gridPos": {
             "h": 9,
             "w": 12,
             "x": 0,
             "y": 15
          },
-         "id": 10,
-         "links": [ ],
-         "sort": {
-            "col": 2,
-            "desc": true
+         "id": 9,
+         "options": {
+            "sortBy": [
+               {
+                  "displayName": "Type"
+               }
+            ]
          },
-         "styles": [
-            {
-               "alias": "Time",
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "pattern": "Time",
-               "type": "hidden"
-            },
-            {
-               "alias": "Type",
-               "pattern": "type"
-            }
-         ],
+         "pluginVersion": "v10.1.0",
          "targets": [
             {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
                "expr": "round(\n  topk(10,\n    sum by (type) (\n      increase(\n        django_db_errors_total{\n          namespace=~\"$namespace\",\n          job=~\"$job\",\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
                "format": "table",
-               "instant": true,
-               "intervalFactor": 2,
-               "legendFormat": "",
-               "refId": "A"
+               "instant": true
             }
          ],
-         "timeFrom": null,
-         "timeShift": null,
          "title": "Top Database Errors (1w)",
+         "transformations": [
+            {
+               "id": "organize",
+               "options": {
+                  "excludeByName": {
+                     "Time": true
+                  },
+                  "indexByName": {
+                     "job": 1,
+                     "namespace": 0,
+                     "type": 2
+                  },
+                  "renameByName": {
+                     "job": "Job",
+                     "namespace": "Namespace",
+                     "type": "Type"
+                  }
+               }
+            }
+         ],
          "type": "table"
       },
       {
-         "aliasColors": { },
-         "bars": false,
-         "dashLength": 10,
-         "dashes": false,
-         "datasource": "$datasource",
-         "fill": 1,
-         "fillGradient": 0,
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 10,
+                  "spanNulls": false
+               },
+               "unit": "short"
+            }
+         },
          "gridPos": {
             "h": 6,
             "w": 12,
             "x": 12,
             "y": 12
          },
-         "id": 11,
-         "legend": {
-            "alignAsTable": true,
-            "avg": true,
-            "current": false,
-            "hideZero": true,
-            "max": true,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "sideWidth": null,
-            "total": false,
-            "values": true
+         "id": 10,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "lastNotNull",
+                  "mean",
+                  "max"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Mean",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
-         "lines": true,
-         "linewidth": 1,
-         "links": [ ],
-         "nullPointMode": "null",
-         "percentage": false,
-         "pointradius": 5,
-         "points": false,
-         "renderer": "flot",
-         "repeat": null,
-         "seriesOverrides": [ ],
-         "spaceLength": 10,
-         "stack": false,
-         "steppedLine": false,
+         "pluginVersion": "v10.1.0",
          "targets": [
             {
-               "expr": "histogram_quantile(0.50,\n  sum(\n    irate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "50 - {{ vendor }}",
-               "refId": "A"
-            },
-            {
-               "expr": "histogram_quantile(0.95,\n  sum(\n    irate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "95 - {{ vendor }}",
-               "refId": "B"
-            },
-            {
-               "expr": "histogram_quantile(0.99,\n  sum(\n    irate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "99 - {{ vendor }}",
-               "refId": "C"
-            },
-            {
-               "expr": "histogram_quantile(0.999,\n  sum(\n    irate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "99.9 - {{ vendor }}",
-               "refId": "D"
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "round(\n  sum(\n    increase(\n      django_db_new_connections_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (namespace, job, vendor)\n)\n",
+               "legendFormat": "{{ vendor }}"
             }
          ],
-         "thresholds": [ ],
-         "timeFrom": null,
-         "timeShift": null,
-         "title": "DB Latency",
-         "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-         },
-         "type": "graph",
-         "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": [ ]
-         },
-         "yaxes": [
-            {
-               "format": "s",
-               "label": null,
-               "logBase": 1,
-               "max": null,
-               "min": null,
-               "show": true
-            },
-            {
-               "format": "s",
-               "label": null,
-               "logBase": 1,
-               "max": null,
-               "min": null,
-               "show": true
-            }
-         ]
+         "title": "Database Connections",
+         "type": "timeseries"
       },
       {
-         "aliasColors": { },
-         "bars": false,
-         "dashLength": 10,
-         "dashes": false,
-         "datasource": "$datasource",
-         "fill": 1,
-         "fillGradient": 0,
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 10,
+                  "spanNulls": false
+               },
+               "unit": "s"
+            }
+         },
          "gridPos": {
             "h": 6,
             "w": 12,
             "x": 12,
             "y": 18
          },
-         "id": 12,
-         "legend": {
-            "alignAsTable": true,
-            "avg": true,
-            "current": false,
-            "hideZero": true,
-            "max": true,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "sideWidth": null,
-            "total": false,
-            "values": true
+         "id": 11,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "lastNotNull",
+                  "mean",
+                  "max"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Mean",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
-         "lines": true,
-         "linewidth": 1,
-         "links": [ ],
-         "nullPointMode": "null",
-         "percentage": false,
-         "pointradius": 5,
-         "points": false,
-         "renderer": "flot",
-         "repeat": null,
-         "seriesOverrides": [ ],
-         "spaceLength": 10,
-         "stack": false,
-         "steppedLine": false,
+         "pluginVersion": "v10.1.0",
          "targets": [
             {
-               "expr": "round(\n  sum(\n    increase(\n      django_db_new_connections_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (namespace, job, vendor)\n)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "{{ vendor }}",
-               "refId": "A"
-            }
-         ],
-         "thresholds": [ ],
-         "timeFrom": null,
-         "timeShift": null,
-         "title": "DB Connections",
-         "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-         },
-         "type": "graph",
-         "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": [ ]
-         },
-         "yaxes": [
-            {
-               "format": "short",
-               "label": null,
-               "logBase": 1,
-               "max": null,
-               "min": null,
-               "show": true
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "histogram_quantile(0.50,\n  sum(\n    irate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
+               "legendFormat": "50 - {{ vendor }}"
             },
             {
-               "format": "short",
-               "label": null,
-               "logBase": 1,
-               "max": null,
-               "min": null,
-               "show": true
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "histogram_quantile(0.95,\n  sum(\n    irate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
+               "legendFormat": "95 - {{ vendor }}"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "histogram_quantile(0.99,\n  sum(\n    irate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
+               "legendFormat": "99 - {{ vendor }}"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "histogram_quantile(0.999,\n  sum(\n    irate(\n      django_db_query_duration_seconds_bucket{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n      }[$__rate_interval]\n    ) > 0\n  ) by (vendor, namespace, job, le)\n)\n",
+               "legendFormat": "99.9 - {{ vendor }}"
             }
-         ]
+         ],
+         "title": "Database Latency",
+         "type": "timeseries"
       },
       {
-         "collapse": false,
-         "collapsed": false,
          "gridPos": {
             "h": 1,
             "w": 24,
             "x": 0,
             "y": 24
          },
-         "id": 13,
-         "panels": [ ],
-         "repeat": null,
-         "repeatIteration": null,
-         "repeatRowId": null,
-         "showTitle": true,
+         "id": 12,
          "title": "Cache",
-         "titleSize": "h6",
          "type": "row"
       },
       {
-         "aliasColors": { },
-         "bars": false,
-         "dashLength": 10,
-         "dashes": false,
-         "datasource": "$datasource",
-         "fill": 10,
-         "fillGradient": 0,
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 100,
+                  "spanNulls": false,
+                  "stacking": {
+                     "mode": "percent"
+                  }
+               },
+               "unit": "ops"
+            }
+         },
          "gridPos": {
             "h": 6,
             "w": 24,
             "x": 0,
             "y": 25
          },
-         "id": 14,
-         "legend": {
-            "alignAsTable": true,
-            "avg": true,
-            "current": false,
-            "hideZero": true,
-            "max": true,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "sideWidth": null,
-            "sort": "avg",
-            "sortDesc": true,
-            "total": false,
-            "values": true
+         "id": 13,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "lastNotNull",
+                  "mean",
+                  "max"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Mean",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
-         "lines": true,
-         "linewidth": 1,
-         "links": [ ],
-         "nullPointMode": "null as zero",
-         "percentage": false,
-         "pointradius": 5,
-         "points": false,
-         "renderer": "flot",
-         "repeat": null,
-         "seriesOverrides": [ ],
-         "spaceLength": 10,
-         "stack": true,
-         "steppedLine": false,
+         "pluginVersion": "v10.1.0",
          "targets": [
             {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
                "expr": "sum(\n  rate(\n    django_cache_get_hits_total{\n      namespace=~\"$namespace\",\n      job=~\"$job\",\n    }[$__rate_interval]\n  ) > 0\n) by (namespace, job, backend)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "Hit - {{ backend }}",
-               "refId": "A"
+               "legendFormat": "Hit - {{ backend }}"
             },
             {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
                "expr": "sum(\n  rate(\n    django_cache_get_misses_total{\n      namespace=~\"$namespace\",\n      job=~\"$job\",\n    }[$__rate_interval]\n  ) > 0\n) by (namespace, job, backend)\n",
-               "format": "time_series",
-               "intervalFactor": 2,
-               "legendFormat": "Miss - {{ backend }}",
-               "refId": "B"
+               "legendFormat": "Miss - {{ backend }}"
             }
          ],
-         "thresholds": [ ],
-         "timeFrom": null,
-         "timeShift": null,
          "title": "Cache Get",
-         "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-         },
-         "type": "graph",
-         "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": [ ]
-         },
-         "yaxes": [
-            {
-               "format": "ops",
-               "label": null,
-               "logBase": 1,
-               "max": null,
-               "min": null,
-               "show": true
-            },
-            {
-               "format": "ops",
-               "label": null,
-               "logBase": 1,
-               "max": null,
-               "min": null,
-               "show": true
-            }
-         ]
+         "type": "timeseries"
       }
    ],
-   "refresh": "",
-   "rows": [ ],
-   "schemaVersion": 14,
-   "style": "dark",
+   "schemaVersion": 36,
    "tags": [
       "django",
       "django-mixin"
@@ -791,61 +686,38 @@
    "templating": {
       "list": [
          {
-            "current": {
-               "text": "Prometheus",
-               "value": "Prometheus"
-            },
-            "hide": 0,
             "label": "Data Source",
             "name": "datasource",
-            "options": [ ],
             "query": "prometheus",
-            "refresh": 1,
-            "regex": "",
             "type": "datasource"
          },
          {
-            "allValue": null,
-            "current": {
-               "text": "",
-               "value": ""
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
             },
-            "datasource": "$datasource",
-            "hide": 0,
             "includeAll": false,
             "label": "Namespace",
             "multi": false,
             "name": "namespace",
-            "options": [ ],
             "query": "label_values(django_http_responses_total_by_status_view_method_total{}, namespace)",
-            "refresh": 1,
-            "regex": "",
+            "refresh": 2,
             "sort": 1,
-            "tagValuesQuery": "",
-            "tags": [ ],
-            "tagsQuery": "",
-            "type": "query",
-            "useTags": false
+            "type": "query"
          },
          {
-            "allValue": null,
-            "current": { },
-            "datasource": "$datasource",
-            "hide": 0,
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
+            },
             "includeAll": false,
             "label": "Job",
             "multi": false,
             "name": "job",
-            "options": [ ],
             "query": "label_values(django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\"}, job)",
-            "refresh": 1,
-            "regex": "",
+            "refresh": 2,
             "sort": 1,
-            "tagValuesQuery": "",
-            "tags": [ ],
-            "tagsQuery": "",
-            "type": "query",
-            "useTags": false
+            "type": "query"
          }
       ]
    },
@@ -853,33 +725,7 @@
       "from": "now-6h",
       "to": "now"
    },
-   "timepicker": {
-      "refresh_intervals": [
-         "5s",
-         "10s",
-         "30s",
-         "1m",
-         "5m",
-         "15m",
-         "30m",
-         "1h",
-         "2h",
-         "1d"
-      ],
-      "time_options": [
-         "5m",
-         "15m",
-         "1h",
-         "6h",
-         "12h",
-         "24h",
-         "2d",
-         "7d",
-         "30d"
-      ]
-   },
    "timezone": "utc",
    "title": "Django / Overview",
-   "uid": "django-overview-jkwq",
-   "version": 0
+   "uid": "django-overview-jkwq"
 }

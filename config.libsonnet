@@ -3,6 +3,12 @@ local annotation = grafana.annotation;
 
 {
   _config+:: {
+    // Bypasses grafana.com/dashboards validator
+    bypassDashboardValidation: {
+      __inputs: [],
+      __requires: [],
+    },
+
     djangoSelector: 'job=~"django"',
 
     grafanaUrl: 'https://grafana.com',

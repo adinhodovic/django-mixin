@@ -1,85 +1,148 @@
-local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
-local dashboard = grafana.dashboard;
-local row = grafana.row;
-local prometheus = grafana.prometheus;
-local template = grafana.template;
-local graphPanel = grafana.graphPanel;
-local statPanel = grafana.statPanel;
+local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
+
+local dashboard = g.dashboard;
+local row = g.panel.row;
+local grid = g.util.grid;
+
+local variable = dashboard.variable;
+local datasource = variable.datasource;
+local query = variable.query;
+local prometheus = g.query.prometheus;
+
+local statPanel = g.panel.stat;
+local timeSeriesPanel = g.panel.timeSeries;
+
+// Stat
+local stOptions = statPanel.options;
+local stStandardOptions = statPanel.standardOptions;
+local stQueryOptions = statPanel.queryOptions;
+
+// Timeseries
+local tsOptions = timeSeriesPanel.options;
+local tsStandardOptions = timeSeriesPanel.standardOptions;
+local tsQueryOptions = timeSeriesPanel.queryOptions;
+local tsFieldConfig = timeSeriesPanel.fieldConfig;
+local tsCustom = tsFieldConfig.defaults.custom;
+local tsLegend = tsOptions.legend;
+local tsOverride = tsStandardOptions.override;
 
 {
   grafanaDashboards+:: {
 
-    local prometheusTemplate =
-      template.datasource(
+    local datasourceVariable =
+      datasource.new(
         'datasource',
         'prometheus',
-        'Prometheus',
-        label='Data Source',
-        hide='',
-      ),
+      ) +
+      datasource.generalOptions.withLabel('Data Source'),
 
-    local namespaceTemplate =
-      template.new(
-        name='namespace',
-        label='Namespace',
-        datasource='$datasource',
-        query='label_values(django_http_responses_total_by_status_view_method_total{}, namespace)',
-        hide='',
-        refresh=2,  // On Time Range Change
-        multi=false,
-        includeAll=false,
-        sort=1
-      ),
+    local namespaceVariable =
+      query.new(
+        'namespace',
+        'label_values(django_http_responses_total_by_status_view_method_total{}, namespace)'
+      ) +
+      query.withDatasourceFromVariable(datasourceVariable) +
+      query.withSort(1) +
+      query.generalOptions.withLabel('Namespace') +
+      query.selectionOptions.withMulti(false) +
+      query.selectionOptions.withIncludeAll(false) +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
 
-    local jobTemplate =
-      template.new(
-        name='job',
-        label='Job',
-        datasource='$datasource',
-        query='label_values(django_http_responses_total_by_status_view_method_total{namespace=~"$namespace"}, job)',
-        hide='',
-        refresh=2,  // On Time Range Change
-        multi=false,
-        includeAll=false,
-        sort=1
-      ),
+
+    local jobVariable =
+      query.new(
+        'job',
+        'label_values(django_http_responses_total_by_status_view_method_total{namespace=~"$namespace"}, job)'
+      ) +
+      query.withDatasourceFromVariable(datasourceVariable) +
+      query.withSort(1) +
+      query.generalOptions.withLabel('Job') +
+      query.selectionOptions.withMulti(false) +
+      query.selectionOptions.withIncludeAll(false) +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
 
     local defaultFilters = 'namespace=~"$namespace", job=~"$job"',
 
-    local viewTemplate =
-      template.new(
-        name='view',
-        label='View',
-        datasource='$datasource',
-        query='label_values(django_http_responses_total_by_status_view_method_total{%s, view!~"%s"}, view)' % [defaultFilters, $._config.djangoIgnoredViews],
-        hide='',
-        refresh=2,  // On Time Range Change
-        multi=false,
-        includeAll=false,
-        sort=1
-      ),
+    local viewVariable =
+      query.new(
+        'view',
+        'label_values(django_http_responses_total_by_status_view_method_total{%s, view!~"%s"}, view)' % [defaultFilters, $._config.djangoIgnoredViews],
+      ) +
+      query.withDatasourceFromVariable(datasourceVariable) +
+      query.withSort(1) +
+      query.generalOptions.withLabel('View') +
+      query.selectionOptions.withMulti(false) +
+      query.selectionOptions.withIncludeAll(false) +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
 
-    local methodTemplate =
-      template.new(
-        name='method',
-        label='Method',
-        datasource='$datasource',
-        query='label_values(django_http_responses_total_by_status_view_method_total{%s, view=~"$view"}, method)' % defaultFilters,
-        current='',
-        hide='',
-        refresh=2,  // On Time Range Change
-        multi=true,
-        includeAll=true,
-        sort=1
-      ),
+    local methodVariable =
+      query.new(
+        'method',
+        'label_values(django_http_responses_total_by_status_view_method_total{%s, view=~"$view"}, method)' % defaultFilters,
+      ) +
+      query.withDatasourceFromVariable(datasourceVariable) +
+      query.withSort(1) +
+      query.generalOptions.withLabel('Method') +
+      query.selectionOptions.withMulti(true) +
+      query.selectionOptions.withIncludeAll(true) +
+      query.refresh.onLoad() +
+      query.refresh.onTime(),
 
-    local templates = [
-      prometheusTemplate,
-      namespaceTemplate,
-      jobTemplate,
-      viewTemplate,
-      methodTemplate,
+    local variables = [
+      datasourceVariable,
+      namespaceVariable,
+      jobVariable,
+      viewVariable,
+      methodVariable,
     ],
+
+    local requestSuccessRateQuery = |||
+      sum(
+        rate(
+          django_http_responses_total_by_status_view_method_total{
+              namespace=~"$namespace",
+              job=~"$job",
+              view="$view",
+              method=~"$method",
+              status!~"[4-5].*"
+            }[1w]
+          )
+      ) /
+      sum(
+        rate(
+          django_http_responses_total_by_status_view_method_total{
+            namespace=~"$namespace",
+            job=~"$job",
+            view="$view",
+            method=~"$method"
+          }[1w]
+        )
+      )
+    ||| % $._config,
+
+    local requestSuccessRateStatPanel =
+      statPanel.new(
+        'Success Rate (non 4xx-5xx responses) [1w]',
+      ) +
+      stQueryOptions.withTargets(
+        prometheus.new(
+          '$datasource',
+          requestSuccessRateQuery,
+        )
+      ) +
+      stStandardOptions.withUnit('percentunit') +
+      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
+      stStandardOptions.thresholds.withSteps([
+        stStandardOptions.threshold.step.withValue(0.90) +
+        stStandardOptions.threshold.step.withColor('red'),
+        stStandardOptions.threshold.step.withValue(0.95) +
+        stStandardOptions.threshold.step.withColor('yellow'),
+        stStandardOptions.threshold.step.withValue(0.99) +
+        stStandardOptions.threshold.step.withColor('green'),
+      ]),
 
     local requestHttpExceptionsQuery = |||
       sum by (view) (
@@ -96,40 +159,21 @@ local statPanel = grafana.statPanel;
     local requestHttpExceptionsStatPanel =
       statPanel.new(
         'HTTP Exceptions [1w]',
-        datasource='$datasource',
-        reducerFunction='lastNotNull',
-      )
-      .addTarget(prometheus.target(requestHttpExceptionsQuery))
-      .addThresholds([
-        { color: 'green', value: 0.1 },
-        { color: 'yellow', value: 10 },
-        { color: 'red', value: 100 },
-      ]),
-
-    local requestSuccessRateQuery = |||
-      sum(
-        rate(
-          django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view="$view", method=~"$method", status!~"[4-5].*"}[1w]
-          )
-      ) /
-      sum(
-        rate(
-          django_http_responses_total_by_status_view_method_total{namespace=~"$namespace", job=~"$job", view="$view", method=~"$method"}[1w]
+      ) +
+      stQueryOptions.withTargets(
+        prometheus.new(
+          '$datasource',
+          requestHttpExceptionsQuery,
         )
-      )
-    ||| % $._config,
-    local requestSuccessRateStatPanel =
-      statPanel.new(
-        'Success Rate (non 4xx-5xx responses) [1w]',
-        datasource='$datasource',
-        unit='percentunit',
-        reducerFunction='lastNotNull',
-      )
-      .addTarget(prometheus.target(requestSuccessRateQuery))
-      .addThresholds([
-        { color: 'red', value: 0.90 },
-        { color: 'yellow', value: 0.95 },
-        { color: 'green', value: 0.99 },
+      ) +
+      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
+      stStandardOptions.thresholds.withSteps([
+        stStandardOptions.threshold.step.withValue(1) +
+        stStandardOptions.threshold.step.withColor('green'),
+        stStandardOptions.threshold.step.withValue(10) +
+        stStandardOptions.threshold.step.withColor('yellow'),
+        stStandardOptions.threshold.step.withValue(100) +
+        stStandardOptions.threshold.step.withColor('red'),
       ]),
 
     local requestLatencyP50SummaryQuery = |||
@@ -146,33 +190,49 @@ local statPanel = grafana.statPanel;
         ) by (job, le)
       )
     ||| % $._config,
+
     local requestLatencyP50SummaryStatPanel =
       statPanel.new(
         'Average Request Latency (P50) [1w]',
-        datasource='$datasource',
-        unit='s',
-        reducerFunction='lastNotNull',
-      )
-      .addTarget(prometheus.target(requestLatencyP50SummaryQuery))
-      .addThresholds([
-        { color: 'green', value: 0 },
-        { color: 'yellow', value: 1000 },
-        { color: 'red', value: 2000 },
+      ) +
+      statPanel.queryOptions.withTargets(
+        prometheus.new(
+          '$datasource',
+          requestLatencyP50SummaryQuery,
+        )
+      ) +
+      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
+      stStandardOptions.withUnit('s') +
+      stStandardOptions.thresholds.withSteps([
+        stStandardOptions.threshold.step.withValue(0) +
+        stStandardOptions.threshold.step.withColor('green'),
+        stStandardOptions.threshold.step.withValue(1000) +
+        stStandardOptions.threshold.step.withColor('yellow'),
+        stStandardOptions.threshold.step.withValue(2000) +
+        stStandardOptions.threshold.step.withColor('red'),
       ]),
 
     local requestLatencyP95SummaryQuery = std.strReplace(requestLatencyP50SummaryQuery, '0.50', '0.95'),
+
     local requestLatencyP95SummaryStatPanel =
       statPanel.new(
-        'Request Latency (P95) [1w]',
-        datasource='$datasource',
-        unit='s',
-        reducerFunction='lastNotNull',
-      )
-      .addTarget(prometheus.target(requestLatencyP95SummaryQuery))
-      .addThresholds([
-        { color: 'green', value: 0 },
-        { color: 'yellow', value: 2500 },
-        { color: 'red', value: 5000 },
+        'Average Request Latency (P95) [1w]',
+      ) +
+      statPanel.queryOptions.withTargets(
+        prometheus.new(
+          '$datasource',
+          requestLatencyP95SummaryQuery,
+        )
+      ) +
+      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
+      stStandardOptions.withUnit('s') +
+      stStandardOptions.thresholds.withSteps([
+        stStandardOptions.threshold.step.withValue(0) +
+        stStandardOptions.threshold.step.withColor('green'),
+        stStandardOptions.threshold.step.withValue(2500) +
+        stStandardOptions.threshold.step.withColor('yellow'),
+        stStandardOptions.threshold.step.withValue(5000) +
+        stStandardOptions.threshold.step.withColor('red'),
       ]),
 
     local requestQuery = |||
@@ -189,27 +249,30 @@ local statPanel = grafana.statPanel;
       )
     ||| % $._config,
 
-    local requestGraphPanel =
-      graphPanel.new(
+    local requestTimeSeriesPanel =
+      timeSeriesPanel.new(
         'Requests',
-        datasource='$datasource',
-        format='reqps',
-        legend_show=true,
-        legend_values=true,
-        legend_alignAsTable=true,
-        legend_rightSide=true,
-        legend_avg=true,
-        legend_max=true,
-        legend_hideZero=true,
-        fill=10,
-        nullPointMode='null as zero'
-      )
-      .addTarget(
-        prometheus.target(
+      ) +
+      tsQueryOptions.withTargets(
+        prometheus.new(
+          '$datasource',
           requestQuery,
-          legendFormat='reqps',
+        ) +
+        prometheus.withLegendFormat(
+          'reqps'
         )
-      ),
+      ) +
+      tsStandardOptions.withUnit('reqps') +
+      tsOptions.tooltip.withMode('multi') +
+      tsOptions.tooltip.withSort('desc') +
+      tsLegend.withShowLegend(true) +
+      tsLegend.withDisplayMode('table') +
+      tsLegend.withPlacement('right') +
+      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
+      tsLegend.withSortBy('Mean') +
+      tsLegend.withSortDesc(true) +
+      tsCustom.withFillOpacity(100) +
+      tsCustom.withSpanNulls(false),
 
     local response2xxQuery = |||
       round(
@@ -229,49 +292,76 @@ local statPanel = grafana.statPanel;
     local response4xxQuery = std.strReplace(response2xxQuery, '2.*', '4.*'),
     local response5xxQuery = std.strReplace(response2xxQuery, '2.*', '5.*'),
 
-    local responseGraphPanel =
-      graphPanel.new(
+    local responseTimeSeriesPanel =
+      timeSeriesPanel.new(
         'Responses',
-        datasource='$datasource',
-        format='reqps',
-        legend_show=true,
-        legend_values=true,
-        legend_alignAsTable=true,
-        legend_rightSide=true,
-        legend_avg=true,
-        legend_max=true,
-        legend_hideZero=true,
-        legend_sort='avg',
-        legend_sortDesc=true,
-        fill=10,
-        stack=true,
-        percentage=true,
-        nullPointMode='null as zero'
-      )
-      .addTarget(
-        prometheus.target(
-          response2xxQuery,
-          legendFormat='2xx',
-        )
-      )
-      .addTarget(
-        prometheus.target(
-          response3xxQuery,
-          legendFormat='3xx',
-        )
-      )
-      .addTarget(
-        prometheus.target(
-          response4xxQuery,
-          legendFormat='4xx',
-        )
-      )
-      .addTarget(
-        prometheus.target(
-          response5xxQuery,
-          legendFormat='5xx',
-        )
-      ),
+      ) +
+      tsQueryOptions.withTargets(
+        [
+          prometheus.new(
+            '$datasource',
+            response2xxQuery,
+          ) +
+          prometheus.withLegendFormat(
+            '2xx'
+          ),
+          prometheus.new(
+            '$datasource',
+            response3xxQuery,
+          ) +
+          prometheus.withLegendFormat(
+            '3xx'
+          ),
+          prometheus.new(
+            '$datasource',
+            response4xxQuery,
+          ) +
+          prometheus.withLegendFormat(
+            '4xx'
+          ),
+          prometheus.new(
+            '$datasource',
+            response5xxQuery,
+          ) +
+          prometheus.withLegendFormat(
+            '5xx'
+          ),
+        ]
+      ) +
+      tsStandardOptions.withUnit('reqps') +
+      tsOptions.tooltip.withMode('multi') +
+      tsOptions.tooltip.withSort('desc') +
+      tsStandardOptions.withOverrides([
+        tsOverride.byName.new('2xx') +
+        tsOverride.byName.withPropertiesFromOptions(
+          tsStandardOptions.color.withMode('fixed') +
+          tsStandardOptions.color.withFixedColor('green')
+        ),
+        tsOverride.byName.new('3xx') +
+        tsOverride.byName.withPropertiesFromOptions(
+          tsStandardOptions.color.withMode('fixed') +
+          tsStandardOptions.color.withFixedColor('blue')
+        ),
+        tsOverride.byName.new('4xx') +
+        tsOverride.byName.withPropertiesFromOptions(
+          tsStandardOptions.color.withMode('fixed') +
+          tsStandardOptions.color.withFixedColor('yellow')
+        ),
+        tsOverride.byName.new('5xx') +
+        tsOverride.byName.withPropertiesFromOptions(
+          tsStandardOptions.color.withMode('fixed') +
+          tsStandardOptions.color.withFixedColor('red')
+        ),
+      ]) +
+      tsLegend.withShowLegend(true) +
+      tsLegend.withDisplayMode('table') +
+      tsLegend.withPlacement('right') +
+      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
+      tsLegend.withSortBy('Mean') +
+      tsLegend.withSortDesc(true) +
+      tsCustom.stacking.withMode('percent') +
+      tsCustom.withFillOpacity(100) +
+      tsCustom.withSpanNulls(false),
 
     local responseStatusCodesQuery = |||
       round(
@@ -288,30 +378,32 @@ local statPanel = grafana.statPanel;
       )
     ||| % $._config,
 
-    local responseStatusCodesGraphPanel =
-      graphPanel.new(
-        'Response Status Codes',
-        datasource='$datasource',
-        format='reqps',
-        legend_show=true,
-        legend_values=true,
-        legend_alignAsTable=true,
-        legend_rightSide=true,
-        legend_avg=true,
-        legend_max=true,
-        legend_hideZero=true,
-        legend_sort='avg',
-        legend_sortDesc=true,
-        fill=10,
-        stack=true,
-        nullPointMode='null as zero'
-      )
-      .addTarget(
-        prometheus.target(
+
+    local responseStatusCodesTimeSeriesPanel =
+      timeSeriesPanel.new(
+        'Responses Status Codes',
+      ) +
+      tsQueryOptions.withTargets(
+        prometheus.new(
+          '$datasource',
           responseStatusCodesQuery,
-          legendFormat='{{ view }} / {{ status }} / {{ method }}',
+        ) +
+        prometheus.withLegendFormat(
+          '{{ view }} / {{ status }} / {{ method }}',
         )
-      ),
+      ) +
+      tsStandardOptions.withUnit('reqps') +
+      tsOptions.tooltip.withMode('multi') +
+      tsOptions.tooltip.withSort('desc') +
+      tsLegend.withShowLegend(true) +
+      tsLegend.withDisplayMode('table') +
+      tsLegend.withPlacement('right') +
+      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
+      tsLegend.withSortBy('Mean') +
+      tsLegend.withSortDesc(true) +
+      tsCustom.stacking.withMode('value') +
+      tsCustom.withFillOpacity(100) +
+      tsCustom.withSpanNulls(false),
 
     local requestLatencyP50Query = |||
       histogram_quantile(0.50,
@@ -331,43 +423,53 @@ local statPanel = grafana.statPanel;
     local requestLatencyP99Query = std.strReplace(requestLatencyP50Query, '0.50', '0.99'),
     local requestLatencyP999Query = std.strReplace(requestLatencyP50Query, '0.50', '0.999'),
 
-    local requestLatencyGraphPanel =
-      graphPanel.new(
+    local requestLatencyTimeSeriesPanel =
+      timeSeriesPanel.new(
         'Request Latency',
-        datasource='$datasource',
-        format='s',
-        legend_show=true,
-        legend_values=true,
-        legend_alignAsTable=true,
-        legend_rightSide=true,
-        legend_avg=true,
-        legend_max=true,
-        legend_hideZero=true,
-      )
-      .addTarget(
-        prometheus.target(
-          requestLatencyP50Query,
-          legendFormat='50 - {{ view }}',
-        )
-      )
-      .addTarget(
-        prometheus.target(
-          requestLatencyP95Query,
-          legendFormat='95 - {{ view }}',
-        )
-      )
-      .addTarget(
-        prometheus.target(
-          requestLatencyP99Query,
-          legendFormat='99 - {{ view }}',
-        )
-      )
-      .addTarget(
-        prometheus.target(
-          requestLatencyP999Query,
-          legendFormat='99.9 - {{ view }}',
-        )
-      ),
+      ) +
+      tsQueryOptions.withTargets(
+        [
+          prometheus.new(
+            '$datasource',
+            requestLatencyP50Query,
+          ) +
+          prometheus.withLegendFormat(
+            '50 - {{ view }}',
+          ),
+          prometheus.new(
+            '$datasource',
+            requestLatencyP95Query,
+          ) +
+          prometheus.withLegendFormat(
+            '95 - {{ view }}',
+          ),
+          prometheus.new(
+            '$datasource',
+            requestLatencyP99Query,
+          ) +
+          prometheus.withLegendFormat(
+            '99 - {{ view }}',
+          ),
+          prometheus.new(
+            '$datasource',
+            requestLatencyP999Query,
+          ) +
+          prometheus.withLegendFormat(
+            '99.9 - {{ view }}',
+          ),
+        ]
+      ) +
+      tsStandardOptions.withUnit('s') +
+      tsOptions.tooltip.withMode('multi') +
+      tsOptions.tooltip.withSort('desc') +
+      tsLegend.withShowLegend(true) +
+      tsLegend.withDisplayMode('table') +
+      tsLegend.withPlacement('right') +
+      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
+      tsLegend.withSortBy('Mean') +
+      tsLegend.withSortDesc(true) +
+      tsCustom.withFillOpacity(10) +
+      tsCustom.withSpanNulls(false),
 
     local summaryRow =
       row.new(
@@ -385,37 +487,78 @@ local statPanel = grafana.statPanel;
       ),
 
     'django-requests-by-view.json':
+      $._config.bypassDashboardValidation +
       dashboard.new(
         'Django / Requests / By View',
-        description='A dashboard that monitors Django which focuses on breaking down requests by view. It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).',
-        uid=$._config.requestsByViewDashboardUid,
-        tags=$._config.tags,
-        time_from='now-6h',
-        editable=true,
-        time_to='now',
-        timezone='utc'
-      )
-      .addPanel(summaryRow, gridPos={ h: 1, w: 24, x: 0, y: 0 })
-      .addPanel(requestSuccessRateStatPanel, gridPos={ h: 4, w: 6, x: 0, y: 1 })
-      .addPanel(requestHttpExceptionsStatPanel, gridPos={ h: 4, w: 6, x: 6, y: 1 })
-      .addPanel(requestLatencyP50SummaryStatPanel, gridPos={ h: 4, w: 6, x: 12, y: 1 })
-      .addPanel(requestLatencyP95SummaryStatPanel, gridPos={ h: 4, w: 6, x: 18, y: 1 })
-      .addPanel(requestResponseRow, gridPos={ h: 1, w: 24, x: 0, y: 5 })
-      .addPanel(requestGraphPanel, gridPos={ h: 8, w: 12, x: 0, y: 6 })
-      .addPanel(responseGraphPanel, gridPos={ h: 8, w: 12, x: 12, y: 6 })
-      .addPanel(latencyStatusCodesRow, gridPos={ h: 1, w: 24, x: 0, y: 14 })
-      .addPanel(responseStatusCodesGraphPanel, gridPos={ h: 8, w: 12, x: 0, y: 15 })
-      .addPanel(requestLatencyGraphPanel, gridPos={ h: 8, w: 12, x: 12, y: 15 })
-      +
-      { templating+: { list+: templates } } +
+      ) +
+      dashboard.withDescription('A dashboard that monitors Django which focuses on breaking down requests by view. It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).') +
+      dashboard.withUid($._config.requestsByViewDashboardUid) +
+      dashboard.withTags($._config.tags) +
+      dashboard.withTimezone('utc') +
+      dashboard.withEditable(true) +
+      dashboard.time.withFrom('now-6h') +
+      dashboard.time.withTo('now') +
+      dashboard.withVariables(variables) +
+      dashboard.withLinks(
+        [
+          dashboard.link.dashboards.new('Django Dashboards', $._config.tags) +
+          dashboard.link.link.options.withTargetBlank(true),
+        ]
+      ) +
+      dashboard.withPanels(
+        [
+          summaryRow +
+          row.gridPos.withX(0) +
+          row.gridPos.withY(0) +
+          row.gridPos.withW(24) +
+          row.gridPos.withH(1),
+        ] +
+        grid.makeGrid(
+          [
+            requestSuccessRateStatPanel,
+            requestHttpExceptionsStatPanel,
+            requestLatencyP50SummaryStatPanel,
+            requestLatencyP95SummaryStatPanel,
+          ],
+          panelWidth=6,
+          panelHeight=4,
+          startY=1
+        ) +
+        [
+          requestResponseRow +
+          row.gridPos.withX(0) +
+          row.gridPos.withY(5) +
+          row.gridPos.withW(24) +
+          row.gridPos.withH(1),
+        ] +
+        grid.makeGrid(
+          [
+            requestTimeSeriesPanel,
+            responseTimeSeriesPanel,
+          ],
+          panelWidth=12,
+          panelHeight=8,
+          startY=6
+        ) +
+        [
+          latencyStatusCodesRow +
+          row.gridPos.withX(0) +
+          row.gridPos.withY(14) +
+          row.gridPos.withW(24) +
+          row.gridPos.withH(1),
+        ] +
+        grid.makeGrid(
+          [
+            responseStatusCodesTimeSeriesPanel,
+            requestLatencyTimeSeriesPanel,
+          ],
+          panelWidth=12,
+          panelHeight=8,
+          startY=15
+        )
+      ) +
       if $._config.annotation.enabled then
-        {
-          annotations: {
-            list: [
-              $._config.customAnnotation,
-            ],
-          },
-        }
+        dashboard.withAnnotations($._config.customAnnotation)
       else {},
   },
 }

@@ -468,6 +468,7 @@ local tsOverride = tsStandardOptions.override;
       tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
       tsLegend.withSortBy('Mean') +
       tsLegend.withSortDesc(true) +
+      tsCustom.withFillOpacity(10) +
       tsCustom.withSpanNulls(false),
 
     local summaryRow =

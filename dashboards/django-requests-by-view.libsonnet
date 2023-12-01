@@ -1,4 +1,3 @@
-local grafana = import 'github.com/grafana/grafonnet-lib/grafonnet/grafana.libsonnet';
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
 
 local dashboard = g.dashboard;
@@ -25,6 +24,7 @@ local tsQueryOptions = timeSeriesPanel.queryOptions;
 local tsFieldConfig = timeSeriesPanel.fieldConfig;
 local tsCustom = tsFieldConfig.defaults.custom;
 local tsLegend = tsOptions.legend;
+local tsOverride = tsStandardOptions.override;
 
 {
   grafanaDashboards+:: {
@@ -268,12 +268,11 @@ local tsLegend = tsOptions.legend;
       tsLegend.withShowLegend(true) +
       tsLegend.withDisplayMode('table') +
       tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['last']) +
-      tsLegend.withSortBy('Last') +
+      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
+      tsLegend.withSortBy('Mean') +
       tsLegend.withSortDesc(true) +
-      tsCustom.withFillOpacity(10) +
-      tsCustom.withSpanNulls('never'),
-    // legend_hideZero=true,
+      tsCustom.withFillOpacity(100) +
+      tsCustom.withSpanNulls(false),
 
     local response2xxQuery = |||
       round(
@@ -332,16 +331,37 @@ local tsLegend = tsOptions.legend;
       tsStandardOptions.withUnit('reqps') +
       tsOptions.tooltip.withMode('multi') +
       tsOptions.tooltip.withSort('desc') +
+      tsStandardOptions.withOverrides([
+        tsOverride.byName.new('2xx') +
+        tsOverride.byName.withPropertiesFromOptions(
+          tsStandardOptions.color.withMode('fixed') +
+          tsStandardOptions.color.withFixedColor('green')
+        ),
+        tsOverride.byName.new('3xx') +
+        tsOverride.byName.withPropertiesFromOptions(
+          tsStandardOptions.color.withMode('fixed') +
+          tsStandardOptions.color.withFixedColor('blue')
+        ),
+        tsOverride.byName.new('4xx') +
+        tsOverride.byName.withPropertiesFromOptions(
+          tsStandardOptions.color.withMode('fixed') +
+          tsStandardOptions.color.withFixedColor('yellow')
+        ),
+        tsOverride.byName.new('5xx') +
+        tsOverride.byName.withPropertiesFromOptions(
+          tsStandardOptions.color.withMode('fixed') +
+          tsStandardOptions.color.withFixedColor('red')
+        ),
+      ]) +
       tsLegend.withShowLegend(true) +
       tsLegend.withDisplayMode('table') +
       tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['avg', 'max']) +
-      tsLegend.withSortBy('avg') +
+      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
+      tsLegend.withSortBy('Mean') +
       tsLegend.withSortDesc(true) +
-      tsCustom.withStacking(tsCustom.stacking.withMode('percent')) +
-      tsCustom.withFillOpacity(10) +
-      tsCustom.withSpanNulls('never'),
-    // legend_hideZero=true,
+      tsCustom.stacking.withMode('percent') +
+      tsCustom.withFillOpacity(100) +
+      tsCustom.withSpanNulls(false),
 
     local responseStatusCodesQuery = |||
       round(
@@ -378,13 +398,12 @@ local tsLegend = tsOptions.legend;
       tsLegend.withShowLegend(true) +
       tsLegend.withDisplayMode('table') +
       tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['avg']) +
-      tsLegend.withSortBy('avg') +
+      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
+      tsLegend.withSortBy('Mean') +
       tsLegend.withSortDesc(true) +
-      tsCustom.withStacking(tsCustom.stacking.withMode('value')) +
-      tsCustom.withFillOpacity(10) +
-      tsCustom.withSpanNulls('never'),
-    // legend_hideZero=true,
+      tsCustom.stacking.withMode('value') +
+      tsCustom.withFillOpacity(100) +
+      tsCustom.withSpanNulls(false),
 
     local requestLatencyP50Query = |||
       histogram_quantile(0.50,
@@ -446,12 +465,10 @@ local tsLegend = tsOptions.legend;
       tsLegend.withShowLegend(true) +
       tsLegend.withDisplayMode('table') +
       tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['avg', 'max']) +
-      tsLegend.withSortBy('avg') +
+      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
+      tsLegend.withSortBy('Mean') +
       tsLegend.withSortDesc(true) +
-      tsCustom.withFillOpacity(10) +
-      tsCustom.withSpanNulls('never'),
-    // legend_hideZero=true,
+      tsCustom.withSpanNulls(false),
 
     local summaryRow =
       row.new(
@@ -509,9 +526,9 @@ local tsLegend = tsOptions.legend;
         [
           requestResponseRow +
           row.gridPos.withX(0) +
-          row.gridPos.withY(0) +
+          row.gridPos.withY(5) +
           row.gridPos.withW(24) +
-          row.gridPos.withH(5),
+          row.gridPos.withH(1),
         ] +
         grid.makeGrid(
           [
@@ -525,9 +542,9 @@ local tsLegend = tsOptions.legend;
         [
           latencyStatusCodesRow +
           row.gridPos.withX(0) +
-          row.gridPos.withY(0) +
+          row.gridPos.withY(14) +
           row.gridPos.withW(24) +
-          row.gridPos.withH(5),
+          row.gridPos.withH(1),
         ] +
         grid.makeGrid(
           [

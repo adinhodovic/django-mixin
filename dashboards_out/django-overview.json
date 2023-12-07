@@ -713,14 +713,13 @@
             "type": "query"
          },
          {
-            "allValue": ".+",
             "datasource": {
                "type": "prometheus",
                "uid": "${datasource}"
             },
-            "includeAll": true,
+            "includeAll": false,
             "label": "Job",
-            "multi": true,
+            "multi": false,
             "name": "job",
             "query": "label_values(django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\"}, job)",
             "refresh": 2,

@@ -58,8 +58,8 @@ local tsOverride = tsStandardOptions.override;
       query.withDatasourceFromVariable(datasourceVariable) +
       query.withSort(1) +
       query.generalOptions.withLabel('Job') +
-      query.selectionOptions.withMulti(true) +
-      query.selectionOptions.withIncludeAll(true, '.+') +
+      query.selectionOptions.withMulti(false) +
+      query.selectionOptions.withIncludeAll(false) +
       query.refresh.onLoad() +
       query.refresh.onTime(),
 

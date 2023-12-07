@@ -101,7 +101,8 @@
                         "value": 100
                      }
                   ]
-               }
+               },
+               "unit": "short"
             }
          },
          "gridPos": {
@@ -596,7 +597,7 @@
    "templating": {
       "list": [
          {
-            "label": "Data Source",
+            "label": "Data source",
             "name": "datasource",
             "query": "prometheus",
             "type": "datasource"
@@ -616,13 +617,14 @@
             "type": "query"
          },
          {
+            "allValue": ".+",
             "datasource": {
                "type": "prometheus",
                "uid": "${datasource}"
             },
-            "includeAll": false,
+            "includeAll": true,
             "label": "Job",
-            "multi": false,
+            "multi": true,
             "name": "job",
             "query": "label_values(django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\"}, job)",
             "refresh": 2,

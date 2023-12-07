@@ -1,5 +1,28 @@
+---
 exclusions:
- template-job-rule:
- panel-job-instance-rule:
- target-rate-interval-rule:
- panel-datasource-rule:
+  template-instance-rule:
+    reason: We don't use instances.
+  panel-datasource-rule:
+    reason: Using a datasource for each panel.
+  panel-title-description-rule:
+    reason: TODO(adinhodovic)
+  target-rate-interval-rule:
+    reason: Intented 2 week range.
+    entries:
+      - dashboard: Django / Overview
+        panel: Cache Hitrate [30m]
+      - dashboard: Django / Overview
+        panel: Top Database Errors (1w)
+      - dashboard: Django / Requests / Overview
+        panel: Top Templates (1w)
+      - dashboard: Django / Requests / Overview
+        panel: Top Responses By View (1w)
+      - dashboard: Django / Requests / Overview
+        panel: Top Responses By Type (1w)
+      - dashboard: Django / Requests / By View
+        panel: Success Rate (non 4xx-5xx responses) [1w]
+      - dashboard: Django / Requests / By View
+        panel: Average Request Latency (P95) [1w]
+      - dashboard: Django / Requests / By View
+        panel: Average Request Latency (P50) [1w]
+  target-instance-rule:

@@ -34,7 +34,7 @@ local tsOverride = tsStandardOptions.override;
         'datasource',
         'prometheus',
       ) +
-      datasource.generalOptions.withLabel('Data Source'),
+      datasource.generalOptions.withLabel('Data source'),
 
     local namespaceVariable =
       query.new(
@@ -58,8 +58,8 @@ local tsOverride = tsStandardOptions.override;
       query.withDatasourceFromVariable(datasourceVariable) +
       query.withSort(1) +
       query.generalOptions.withLabel('Job') +
-      query.selectionOptions.withMulti(false) +
-      query.selectionOptions.withIncludeAll(false) +
+      query.selectionOptions.withMulti(true) +
+      query.selectionOptions.withIncludeAll(true, '.+') +
       query.refresh.onLoad() +
       query.refresh.onTime(),
 
@@ -166,6 +166,7 @@ local tsOverride = tsStandardOptions.override;
           requestHttpExceptionsQuery,
         )
       ) +
+      stStandardOptions.withUnit('short') +
       stOptions.reduceOptions.withCalcs(['lastNotNull']) +
       stStandardOptions.thresholds.withSteps([
         stStandardOptions.threshold.step.withValue(1) +

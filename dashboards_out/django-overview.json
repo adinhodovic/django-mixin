@@ -69,7 +69,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    rate(\n      django_http_requests_total_by_view_transport_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\",\n      }[2m]\n    )\n  ), 0.001\n)\n"
+               "expr": "round(\n  sum(\n    rate(\n      django_http_requests_total_by_view_transport_method_total{\n        namespace=~\"$namespace\",\n        job=~\"$job\",\n        view!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\",\n      }[$__rate_interval]\n    )\n  ), 0.001\n)\n"
             }
          ],
          "title": "Request Volume",
@@ -340,7 +340,8 @@
                         "value": 0
                      }
                   ]
-               }
+               },
+               "unit": "short"
             }
          },
          "gridPos": {
@@ -364,7 +365,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "max (\n  django_migrations_applied_total {\n      namespace=\"$namespace\",\n      job=\"$job\"\n  }\n) by (namespace, job)\n"
+               "expr": "max (\n  django_migrations_applied_total {\n      namespace=\"$namespace\",\n      job=~\"$job\"\n  }\n) by (namespace, job)\n"
             }
          ],
          "title": "Migrations Applied",
@@ -388,7 +389,8 @@
                         "value": 0.10000000000000001
                      }
                   ]
-               }
+               },
+               "unit": "short"
             }
          },
          "gridPos": {
@@ -412,7 +414,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "max (\n  django_migrations_unapplied_total {\n      namespace=\"$namespace\",\n      job=\"$job\"\n  }\n) by (namespace, job)\n"
+               "expr": "max (\n  django_migrations_unapplied_total {\n      namespace=\"$namespace\",\n      job=~\"$job\"\n  }\n) by (namespace, job)\n"
             }
          ],
          "title": "Migrations Unapplied",
@@ -422,6 +424,11 @@
          "datasource": {
             "type": "datasource",
             "uid": "-- Mixed --"
+         },
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            }
          },
          "gridPos": {
             "h": 9,
@@ -686,7 +693,7 @@
    "templating": {
       "list": [
          {
-            "label": "Data Source",
+            "label": "Data source",
             "name": "datasource",
             "query": "prometheus",
             "type": "datasource"
@@ -706,13 +713,14 @@
             "type": "query"
          },
          {
+            "allValue": ".+",
             "datasource": {
                "type": "prometheus",
                "uid": "${datasource}"
             },
-            "includeAll": false,
+            "includeAll": true,
             "label": "Job",
-            "multi": false,
+            "multi": true,
             "name": "job",
             "query": "label_values(django_http_responses_total_by_status_view_method_total{namespace=~\"$namespace\"}, job)",
             "refresh": 2,

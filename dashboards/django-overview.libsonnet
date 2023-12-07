@@ -29,6 +29,7 @@ local tsOverride = tsStandardOptions.override;
 
 // Table
 local tbOptions = tablePanel.options;
+local tbStandardOptions = tablePanel.standardOptions;
 local tbQueryOptions = tablePanel.queryOptions;
 
 {
@@ -39,7 +40,7 @@ local tbQueryOptions = tablePanel.queryOptions;
         'datasource',
         'prometheus',
       ) +
-      datasource.generalOptions.withLabel('Data Source'),
+      datasource.generalOptions.withLabel('Data source'),
 
     local namespaceVariable =
       query.new(
@@ -63,8 +64,8 @@ local tbQueryOptions = tablePanel.queryOptions;
       query.withDatasourceFromVariable(datasourceVariable) +
       query.withSort(1) +
       query.generalOptions.withLabel('Job') +
-      query.selectionOptions.withMulti(false) +
-      query.selectionOptions.withIncludeAll(false) +
+      query.selectionOptions.withMulti(true) +
+      query.selectionOptions.withIncludeAll(true, '.+') +
       query.refresh.onLoad() +
       query.refresh.onTime(),
 
@@ -82,7 +83,7 @@ local tbQueryOptions = tablePanel.queryOptions;
               namespace=~"$namespace",
               job=~"$job",
               view!~"%(djangoIgnoredViews)s",
-            }[2m]
+            }[$__rate_interval]
           )
         ), 0.001
       )
@@ -371,7 +372,7 @@ local tbQueryOptions = tablePanel.queryOptions;
       max (
         django_migrations_applied_total {
             namespace="$namespace",
-            job="$job"
+            job=~"$job"
         }
       ) by (namespace, job)
     ||| % $._config,
@@ -386,6 +387,7 @@ local tbQueryOptions = tablePanel.queryOptions;
           migrationsAppliedQuery,
         )
       ) +
+      stStandardOptions.withUnit('short') +
       stOptions.reduceOptions.withCalcs(['lastNotNull']) +
       stStandardOptions.thresholds.withSteps([
         stStandardOptions.threshold.step.withValue(0) +
@@ -396,7 +398,7 @@ local tbQueryOptions = tablePanel.queryOptions;
       max (
         django_migrations_unapplied_total {
             namespace="$namespace",
-            job="$job"
+            job=~"$job"
         }
       ) by (namespace, job)
     ||| % $._config,
@@ -411,6 +413,7 @@ local tbQueryOptions = tablePanel.queryOptions;
           migrationsUnAppliedQuery,
         )
       ) +
+      stStandardOptions.withUnit('short') +
       stOptions.reduceOptions.withCalcs(['lastNotNull']) +
       stStandardOptions.thresholds.withSteps([
         stStandardOptions.threshold.step.withValue(0) +
@@ -438,6 +441,7 @@ local tbQueryOptions = tablePanel.queryOptions;
       tablePanel.new(
         'Top Database Errors (1w)',
       ) +
+      tbStandardOptions.withUnit('short') +
       tbOptions.withSortBy(
         tbOptions.sortBy.withDisplayName('Type')
       ) +

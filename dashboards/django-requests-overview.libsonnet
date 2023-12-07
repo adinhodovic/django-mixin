@@ -42,7 +42,7 @@ local tbOverride = tbStandardOptions.override;
         'datasource',
         'prometheus',
       ) +
-      datasource.generalOptions.withLabel('Data Source'),
+      datasource.generalOptions.withLabel('Data source'),
 
     local namespaceVariable =
       query.new(
@@ -66,8 +66,8 @@ local tbOverride = tbStandardOptions.override;
       query.withDatasourceFromVariable(datasourceVariable) +
       query.withSort(1) +
       query.generalOptions.withLabel('Job') +
-      query.selectionOptions.withMulti(false) +
-      query.selectionOptions.withIncludeAll(false) +
+      query.selectionOptions.withMulti(true) +
+      query.selectionOptions.withIncludeAll(true, '.+') +
       query.refresh.onLoad() +
       query.refresh.onTime(),
 
@@ -117,7 +117,7 @@ local tbOverride = tbStandardOptions.override;
               view=~"$view",
               view!~"%(djangoIgnoredViews)s",
               method=~"$method"
-            }[2m]
+            }[$__rate_interval]
           )
         ), 0.001
       )

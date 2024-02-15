@@ -1,6 +1,6 @@
 module _
 
-go 1.17
+go 1.21
 
 require (
 	github.com/google/go-jsonnet v0.17.1-0.20210520122306-7373f5b60678
@@ -31,6 +31,7 @@ require (
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.1.1 // indirect
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/Code-Hex/go-generics-cache v1.3.1 // indirect
+	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/alecthomas/kingpin/v2 v2.3.2 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
@@ -148,7 +149,7 @@ require (
 	github.com/prometheus/exporter-toolkit v0.10.0 // indirect
 	github.com/prometheus/procfs v0.11.1 // indirect
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.21 // indirect
-	github.com/sirupsen/logrus v1.7.0 // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
 	github.com/spf13/cobra v1.7.0 // indirect

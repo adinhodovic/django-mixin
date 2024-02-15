@@ -16,6 +16,7 @@
    ],
    "panels": [
       {
+         "collapsed": false,
          "gridPos": {
             "h": 1,
             "w": 24,
@@ -52,7 +53,7 @@
             "h": 4,
             "w": 8,
             "x": 0,
-            "y": 1
+            "y": 0
          },
          "id": 2,
          "options": {
@@ -101,7 +102,7 @@
             "h": 4,
             "w": 8,
             "x": 8,
-            "y": 1
+            "y": 0
          },
          "id": 3,
          "options": {
@@ -150,7 +151,7 @@
             "h": 4,
             "w": 8,
             "x": 16,
-            "y": 1
+            "y": 0
          },
          "id": 4,
          "options": {
@@ -316,6 +317,7 @@
          "type": "timeseries"
       },
       {
+         "collapsed": false,
          "gridPos": {
             "h": 1,
             "w": 24,
@@ -610,6 +612,7 @@
          "type": "timeseries"
       },
       {
+         "collapsed": false,
          "gridPos": {
             "h": 1,
             "w": 24,

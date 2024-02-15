@@ -16,6 +16,7 @@
    ],
    "panels": [
       {
+         "collapsed": false,
          "gridPos": {
             "h": 1,
             "w": 24,
@@ -66,7 +67,7 @@
                ]
             }
          },
-         "pluginVersion": "v10.1.0",
+         "pluginVersion": "v10.2.0",
          "targets": [
             {
                "datasource": {
@@ -119,7 +120,7 @@
                ]
             }
          },
-         "pluginVersion": "v10.1.0",
+         "pluginVersion": "v10.2.0",
          "targets": [
             {
                "datasource": {
@@ -172,7 +173,7 @@
                ]
             }
          },
-         "pluginVersion": "v10.1.0",
+         "pluginVersion": "v10.2.0",
          "targets": [
             {
                "datasource": {
@@ -225,7 +226,7 @@
                ]
             }
          },
-         "pluginVersion": "v10.1.0",
+         "pluginVersion": "v10.2.0",
          "targets": [
             {
                "datasource": {
@@ -239,6 +240,7 @@
          "type": "stat"
       },
       {
+         "collapsed": false,
          "gridPos": {
             "h": 1,
             "w": 24,
@@ -288,7 +290,7 @@
                "sort": "desc"
             }
          },
-         "pluginVersion": "v10.1.0",
+         "pluginVersion": "v10.2.0",
          "targets": [
             {
                "datasource": {
@@ -406,7 +408,7 @@
                "sort": "desc"
             }
          },
-         "pluginVersion": "v10.1.0",
+         "pluginVersion": "v10.2.0",
          "targets": [
             {
                "datasource": {
@@ -445,6 +447,7 @@
          "type": "timeseries"
       },
       {
+         "collapsed": false,
          "gridPos": {
             "h": 1,
             "w": 24,
@@ -497,7 +500,7 @@
                "sort": "desc"
             }
          },
-         "pluginVersion": "v10.1.0",
+         "pluginVersion": "v10.2.0",
          "targets": [
             {
                "datasource": {
@@ -550,7 +553,7 @@
                "sort": "desc"
             }
          },
-         "pluginVersion": "v10.1.0",
+         "pluginVersion": "v10.2.0",
          "targets": [
             {
                "datasource": {

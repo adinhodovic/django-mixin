@@ -57,7 +57,6 @@ local tbOverride = tbStandardOptions.override;
       query.refresh.onLoad() +
       query.refresh.onTime(),
 
-
     local jobVariable =
       query.new(
         'job',

@@ -50,8 +50,9 @@ local tbQueryOptions = tablePanel.queryOptions;
       query.withDatasourceFromVariable(datasourceVariable) +
       query.withSort(1) +
       query.generalOptions.withLabel('Namespace') +
-      query.selectionOptions.withMulti(false) +
-      query.selectionOptions.withIncludeAll(false) +
+      query.selectionOptions.withMulti(true) +
+      // Custom AllValue for non K8s environments where namespace is not set
+      query.selectionOptions.withIncludeAll(true, '.*') +
       query.refresh.onLoad() +
       query.refresh.onTime(),
 
@@ -371,7 +372,7 @@ local tbQueryOptions = tablePanel.queryOptions;
     local migrationsAppliedQuery = |||
       max (
         django_migrations_applied_total {
-            namespace="$namespace",
+            namespace=~"$namespace",
             job=~"$job"
         }
       ) by (namespace, job)
@@ -397,7 +398,7 @@ local tbQueryOptions = tablePanel.queryOptions;
     local migrationsUnAppliedQuery = |||
       max (
         django_migrations_unapplied_total {
-            namespace="$namespace",
+            namespace=~"$namespace",
             job=~"$job"
         }
       ) by (namespace, job)

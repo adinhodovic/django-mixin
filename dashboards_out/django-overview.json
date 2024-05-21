@@ -367,7 +367,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "max (\n  django_migrations_applied_total {\n      namespace=\"$namespace\",\n      job=~\"$job\"\n  }\n) by (namespace, job)\n"
+               "expr": "max (\n  django_migrations_applied_total {\n      namespace=~\"$namespace\",\n      job=~\"$job\"\n  }\n) by (namespace, job)\n"
             }
          ],
          "title": "Migrations Applied",
@@ -416,7 +416,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "max (\n  django_migrations_unapplied_total {\n      namespace=\"$namespace\",\n      job=~\"$job\"\n  }\n) by (namespace, job)\n"
+               "expr": "max (\n  django_migrations_unapplied_total {\n      namespace=~\"$namespace\",\n      job=~\"$job\"\n  }\n) by (namespace, job)\n"
             }
          ],
          "title": "Migrations Unapplied",
@@ -702,13 +702,14 @@
             "type": "datasource"
          },
          {
+            "allValue": ".*",
             "datasource": {
                "type": "prometheus",
                "uid": "${datasource}"
             },
-            "includeAll": false,
+            "includeAll": true,
             "label": "Namespace",
-            "multi": false,
+            "multi": true,
             "name": "namespace",
             "query": "label_values(django_http_responses_total_by_status_view_method_total{}, namespace)",
             "refresh": 2,

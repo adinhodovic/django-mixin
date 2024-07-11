@@ -388,7 +388,7 @@
                               "targetBlank": true,
                               "title": "Go To View",
                               "type": "dashboard",
-                              "url": "/d/django-requests-by-view-jkwq/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
+                              "url": "/d/django-requests-by-view-jkwq/django-requests-by-view?var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
                            }
                         ]
                      }
@@ -629,7 +629,7 @@
                               "targetBlank": true,
                               "title": "Go To View",
                               "type": "dashboard",
-                              "url": "/d/django-requests-by-view-jkwq/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
+                              "url": "/d/django-requests-by-view-jkwq/django-requests-by-view?var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
                            }
                         ]
                      }
@@ -756,7 +756,7 @@
                               "targetBlank": true,
                               "title": "Go To View",
                               "type": "dashboard",
-                              "url": "/d/django-requests-by-view-jkwq/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
+                              "url": "/d/django-requests-by-view-jkwq/django-requests-by-view?var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
                            }
                         ]
                      }
@@ -903,7 +903,7 @@
                               "targetBlank": true,
                               "title": "Go To View",
                               "type": "dashboard",
-                              "url": "/d/django-requests-by-view-jkwq/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
+                              "url": "/d/django-requests-by-view-jkwq/django-requests-by-view?var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
                            }
                         ]
                      }
@@ -1042,13 +1042,14 @@
             "type": "datasource"
          },
          {
+            "allValue": ".*",
             "datasource": {
                "type": "prometheus",
                "uid": "${datasource}"
             },
-            "includeAll": false,
+            "includeAll": true,
             "label": "Namespace",
-            "multi": false,
+            "multi": true,
             "name": "namespace",
             "query": "label_values(django_http_responses_total_by_status_view_method_total{}, namespace)",
             "refresh": 2,

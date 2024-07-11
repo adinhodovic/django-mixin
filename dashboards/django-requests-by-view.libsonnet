@@ -44,8 +44,9 @@ local tsOverride = tsStandardOptions.override;
       query.withDatasourceFromVariable(datasourceVariable) +
       query.withSort(1) +
       query.generalOptions.withLabel('Namespace') +
-      query.selectionOptions.withMulti(false) +
-      query.selectionOptions.withIncludeAll(false) +
+      query.selectionOptions.withMulti(true) +
+      // Custom AllValue for non K8s environments where namespace is not set
+      query.selectionOptions.withIncludeAll(true, '.*') +
       query.refresh.onLoad() +
       query.refresh.onTime(),
 

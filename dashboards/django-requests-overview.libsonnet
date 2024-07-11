@@ -363,7 +363,7 @@ local tbOverride = tbStandardOptions.override;
         tbOptions.sortBy.withDisplayName('P50 Latency') +
         tbOptions.sortBy.withDesc(true)
       ) +
-      tbOptions.footer.TableFooterOptions.withEnablePagination(true) +
+      tbOptions.footer.withEnablePagination(true) +
       tbStandardOptions.withUnit('dtdurations') +
       tbQueryOptions.withTargets(
         [
@@ -507,7 +507,7 @@ local tbOverride = tbStandardOptions.override;
         tbOptions.sortBy.withDisplayName('P50 Latency') +
         tbOptions.sortBy.withDesc(true)
       ) +
-      tbOptions.footer.TableFooterOptions.withEnablePagination(true) +
+      tbOptions.footer.withEnablePagination(true) +
       tbStandardOptions.withUnit('dtdurations') +
       tbQueryOptions.withTargets(
         [
@@ -602,7 +602,7 @@ local tbOverride = tbStandardOptions.override;
         tbOptions.sortBy.withDisplayName('Value') +
         tbOptions.sortBy.withDesc(true)
       ) +
-      tbOptions.footer.TableFooterOptions.withEnablePagination(true) +
+      tbOptions.footer.withEnablePagination(true) +
       tbStandardOptions.withUnit('short') +
       tbQueryOptions.withTargets(
         prometheus.new(
@@ -671,7 +671,7 @@ local tbOverride = tbStandardOptions.override;
         tbOptions.sortBy.withDisplayName('Value') +
         tbOptions.sortBy.withDesc(true)
       ) +
-      tbOptions.footer.TableFooterOptions.withEnablePagination(true) +
+      tbOptions.footer.withEnablePagination(true) +
       tbStandardOptions.withUnit('short') +
       tbQueryOptions.withTargets(
         prometheus.new(
@@ -729,7 +729,7 @@ local tbOverride = tbStandardOptions.override;
         tbOptions.sortBy.withDisplayName('Value') +
         tbOptions.sortBy.withDesc(true)
       ) +
-      tbOptions.footer.TableFooterOptions.withEnablePagination(true) +
+      tbOptions.footer.withEnablePagination(true) +
       tbStandardOptions.withUnit('short') +
       tbQueryOptions.withTargets(
         prometheus.new(
@@ -799,7 +799,7 @@ local tbOverride = tbStandardOptions.override;
         tbOptions.sortBy.withDisplayName('Value') +
         tbOptions.sortBy.withDesc(true)
       ) +
-      tbOptions.footer.TableFooterOptions.withEnablePagination(true) +
+      tbOptions.footer.withEnablePagination(true) +
       tbStandardOptions.withUnit('short') +
       tbQueryOptions.withTargets(
         prometheus.new(

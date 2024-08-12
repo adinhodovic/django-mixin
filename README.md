@@ -37,8 +37,7 @@ You can manually generate the alerts, dashboards and rules files, but first you
 must install some tools:
 
 ```sh
-go get github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb
-brew install jsonnet
+brew install jsonnet jsonnet-bundler
 ```
 
 Then, grab the mixin and its dependencies:

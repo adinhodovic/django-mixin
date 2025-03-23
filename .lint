@@ -21,6 +21,10 @@ exclusions:
         panel: Top Responses By View (1w)
       - dashboard: Django / Requests / Overview
         panel: Top Responses By Type (1w)
+      - dashboard: Django / Requests / Overview
+        panel: API & Other Views Request Latency [1h]
+      - dashboard: Django / Requests / Overview
+        panel: Admin Request Latency [1h]
       - dashboard: Django / Requests / By View
         panel: Success Rate (non 4xx-5xx responses) [1w]
       - dashboard: Django / Requests / By View

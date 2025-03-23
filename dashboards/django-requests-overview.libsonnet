@@ -347,7 +347,7 @@ local tbOverride = tbStandardOptions.override;
               view!~"%(djangoIgnoredViews)s|",
               view!~"%(adminViewRegex)s",
               method=~"$method"
-            }[$__rate_interval]
+            }[1h]
           ) > 0
         ) by (namespace, job, view, le)
       )
@@ -357,7 +357,7 @@ local tbOverride = tbStandardOptions.override;
 
     local apiRequestLatencyTable =
       tablePanel.new(
-        'API & Other Views Request Latency',
+        'API & Other Views Request Latency [1h]',
       ) +
       tbOptions.withSortBy(
         tbOptions.sortBy.withDisplayName('P50 Latency') +
@@ -501,7 +501,7 @@ local tbOverride = tbStandardOptions.override;
 
     local adminRequestLatencyTable =
       tablePanel.new(
-        'Admin Request Latency',
+        'Admin Request Latency [1h]',
       ) +
       tbOptions.withSortBy(
         tbOptions.sortBy.withDisplayName('P50 Latency') +

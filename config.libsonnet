@@ -11,6 +11,13 @@ local annotation = g.dashboard.annotation;
 
     djangoSelector: 'job=~"django"',
 
+    // Default datasource name
+    datasourceName: 'default',
+
+    // Opt-in to multiCluster dashboards by overriding this and the clusterLabel.
+    showMultiCluster: false,
+    clusterLabel: 'cluster',
+
     grafanaUrl: 'https://grafana.com',
 
     overviewDashboardUid: 'django-overview-jkwq',

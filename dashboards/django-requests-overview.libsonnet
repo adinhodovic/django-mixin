@@ -42,12 +42,35 @@ local tbOverride = tbStandardOptions.override;
         'datasource',
         'prometheus',
       ) +
-      datasource.generalOptions.withLabel('Data source'),
+      datasource.generalOptions.withLabel('Data source') +
+      {
+        current: {
+          selected: true,
+          text: $._config.datasourceName,
+          value: $._config.datasourceName,
+        },
+      },
+
+    local clusterVariable =
+      query.new(
+        $._config.clusterLabel,
+        'label_values(django_http_responses_total_by_status_view_method_total{}, cluster)' % $._config,
+      ) +
+      query.withDatasourceFromVariable(datasourceVariable) +
+      query.withSort() +
+      query.generalOptions.withLabel('Cluster') +
+      query.refresh.onLoad() +
+      query.refresh.onTime() +
+      (
+        if $._config.showMultiCluster
+        then query.generalOptions.showOnDashboard.withLabelAndValue()
+        else query.generalOptions.showOnDashboard.withNothing()
+      ),
 
     local namespaceVariable =
       query.new(
         'namespace',
-        'label_values(django_http_responses_total_by_status_view_method_total{}, namespace)'
+        'label_values(django_http_responses_total_by_status_view_method_total{%(clusterLabel)s="$cluster"}, namespace)' % $._config,
       ) +
       query.withDatasourceFromVariable(datasourceVariable) +
       query.withSort(1) +
@@ -60,7 +83,7 @@ local tbOverride = tbStandardOptions.override;
     local jobVariable =
       query.new(
         'job',
-        'label_values(django_http_responses_total_by_status_view_method_total{namespace=~"$namespace"}, job)'
+        'label_values(django_http_responses_total_by_status_view_method_total{%(clusterLabel)s="$cluster", namespace=~"$namespace"}, job)' % $._config,
       ) +
       query.withDatasourceFromVariable(datasourceVariable) +
       query.withSort(1) +
@@ -75,7 +98,7 @@ local tbOverride = tbStandardOptions.override;
     local viewVariable =
       query.new(
         'view',
-        'label_values(django_http_responses_total_by_status_view_method_total{%s, view!~"%s"}, view)' % [defaultFilters, $._config.djangoIgnoredViews],
+        'label_values(django_http_responses_total_by_status_view_method_total{%s="$cluster", %s, view!~"%s"}, view)' % [$._config.clusterLabel, defaultFilters, $._config.djangoIgnoredViews],
       ) +
       query.withDatasourceFromVariable(datasourceVariable) +
       query.withSort(1) +
@@ -88,7 +111,7 @@ local tbOverride = tbStandardOptions.override;
     local methodVariable =
       query.new(
         'method',
-        'label_values(django_http_responses_total_by_status_view_method_total{%s, view=~"$view"}, method)' % defaultFilters,
+        'label_values(django_http_responses_total_by_status_view_method_total{%s="$cluster", %s, view=~"$view"}, method)' % [$._config.clusterLabel, defaultFilters],
       ) +
       query.withDatasourceFromVariable(datasourceVariable) +
       query.withSort(1) +
@@ -100,6 +123,7 @@ local tbOverride = tbStandardOptions.override;
 
     local variables = [
       datasourceVariable,
+      clusterVariable,
       namespaceVariable,
       jobVariable,
       viewVariable,
@@ -111,6 +135,7 @@ local tbOverride = tbStandardOptions.override;
         sum(
           rate(
             django_http_requests_total_by_view_transport_method_total{
+              %(clusterLabel)s="$cluster",
               namespace=~"$namespace",
               job=~"$job",
               view=~"$view",
@@ -145,6 +170,7 @@ local tbOverride = tbStandardOptions.override;
       sum(
         rate(
           django_http_responses_total_by_status_view_method_total{
+            %(clusterLabel)s="$cluster",
             namespace=~"$namespace",
             job=~"$job",
             view=~"$view",
@@ -157,6 +183,7 @@ local tbOverride = tbStandardOptions.override;
       sum(
         rate(
           django_http_responses_total_by_status_view_method_total{
+            %(clusterLabel)s="$cluster",
             namespace=~"$namespace",
             job=~"$job",
             view=~"$view",
@@ -192,10 +219,11 @@ local tbOverride = tbStandardOptions.override;
       histogram_quantile(0.95,
         sum (
           rate (
-              django_http_requests_body_total_bytes_bucket {
-                namespace=~"$namespace",
-                job=~"$job",
-              }[$__rate_interval]
+            django_http_requests_body_total_bytes_bucket {
+              %(clusterLabel)s="$cluster",
+              namespace=~"$namespace",
+              job=~"$job",
+            }[$__rate_interval]
           )
         ) by (job, le)
       )
@@ -227,6 +255,7 @@ local tbOverride = tbStandardOptions.override;
         sum (
           irate(
             django_http_requests_latency_seconds_by_view_method_bucket{
+              %(clusterLabel)s="$cluster",
               namespace=~"$namespace",
               job=~"$job",
               view!~"%(djangoIgnoredViews)s",
@@ -262,6 +291,7 @@ local tbOverride = tbStandardOptions.override;
         sum(
           rate(
             django_http_responses_total_by_status_view_method_total{
+              %(clusterLabel)s="$cluster",
               namespace=~"$namespace",
               job=~"$job",
               view=~"$view",
@@ -341,6 +371,7 @@ local tbOverride = tbStandardOptions.override;
         sum(
           rate(
             django_http_requests_latency_seconds_by_view_method_bucket{
+              %(clusterLabel)s="$cluster",
               namespace=~"$namespace",
               job=~"$job",
               view=~"$view",
@@ -584,6 +615,7 @@ local tbOverride = tbStandardOptions.override;
           sum by (namespace, job, view) (
             increase(
               django_http_exceptions_total_by_view_total{
+                %(clusterLabel)s="$cluster",
                 namespace=~"$namespace",
                 job=~"$job",
                 view!~"%(djangoIgnoredViews)s",
@@ -654,6 +686,7 @@ local tbOverride = tbStandardOptions.override;
           sum by (namespace, job, type) (
             increase(
               django_http_exceptions_total_by_type_total{
+                %(clusterLabel)s="$cluster",
                 namespace=~"$namespace",
                 job=~"$job",
               }[1w]
@@ -710,6 +743,7 @@ local tbOverride = tbStandardOptions.override;
           sum by (namespace, job, view) (
             increase(
               django_http_responses_total_by_status_view_method_total{
+                %(clusterLabel)s="$cluster",
                 namespace=~"$namespace",
                 job=~"$job",
                 view!~"%(djangoIgnoredViews)s",
@@ -781,6 +815,7 @@ local tbOverride = tbStandardOptions.override;
           sum by (namespace, job, templatename) (
             increase(
               django_http_responses_total_by_templatename_total{
+                %(clusterLabel)s="$cluster",
                 namespace=~"$namespace",
                 job=~"$job",
                 templatename!~"%(djangoIgnoredTemplates)s"

@@ -581,7 +581,10 @@ local tbQueryOptions = tablePanel.queryOptions;
       dashboard.withLinks(
         [
           dashboard.link.dashboards.new('Django Dashboards', $._config.tags) +
-          dashboard.link.link.options.withTargetBlank(true),
+          dashboard.link.link.options.withTargetBlank(true) +
+          dashboard.link.link.options.withAsDropdown(true) +
+          dashboard.link.link.options.withIncludeVars(true) +
+          dashboard.link.link.options.withKeepTime(true),
         ]
       ) +
       dashboard.withPanels(

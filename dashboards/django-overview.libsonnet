@@ -40,12 +40,35 @@ local tbQueryOptions = tablePanel.queryOptions;
         'datasource',
         'prometheus',
       ) +
-      datasource.generalOptions.withLabel('Data source'),
+      datasource.generalOptions.withLabel('Data source') +
+      {
+        current: {
+          selected: true,
+          text: $._config.datasourceName,
+          value: $._config.datasourceName,
+        },
+      },
+
+    local clusterVariable =
+      query.new(
+        $._config.clusterLabel,
+        'label_values(django_http_responses_total_by_status_view_method_total{}, cluster)' % $._config,
+      ) +
+      query.withDatasourceFromVariable(datasourceVariable) +
+      query.withSort() +
+      query.generalOptions.withLabel('Cluster') +
+      query.refresh.onLoad() +
+      query.refresh.onTime() +
+      (
+        if $._config.showMultiCluster
+        then query.generalOptions.showOnDashboard.withLabelAndValue()
+        else query.generalOptions.showOnDashboard.withNothing()
+      ),
 
     local namespaceVariable =
       query.new(
         'namespace',
-        'label_values(django_http_responses_total_by_status_view_method_total{}, namespace)'
+        'label_values(django_http_responses_total_by_status_view_method_total{%(clusterLabel)s="$cluster"}, namespace)' % $._config,
       ) +
       query.withDatasourceFromVariable(datasourceVariable) +
       query.withSort(1) +
@@ -59,7 +82,7 @@ local tbQueryOptions = tablePanel.queryOptions;
     local jobVariable =
       query.new(
         'job',
-        'label_values(django_http_responses_total_by_status_view_method_total{namespace=~"$namespace"}, job)'
+        'label_values(django_http_responses_total_by_status_view_method_total{%(clusterLabel)s="$cluster", namespace=~"$namespace"}, job)' % $._config,
       ) +
       query.withDatasourceFromVariable(datasourceVariable) +
       query.withSort(1) +
@@ -71,6 +94,7 @@ local tbQueryOptions = tablePanel.queryOptions;
 
     local variables = [
       datasourceVariable,
+      clusterVariable,
       namespaceVariable,
       jobVariable,
     ],
@@ -80,6 +104,7 @@ local tbQueryOptions = tablePanel.queryOptions;
         sum(
           rate(
             django_http_requests_total_by_view_transport_method_total{
+              %(clusterLabel)s="$cluster",
               namespace=~"$namespace",
               job=~"$job",
               view!~"%(djangoIgnoredViews)s",
@@ -112,6 +137,7 @@ local tbQueryOptions = tablePanel.queryOptions;
       sum (
         rate (
           django_cache_get_hits_total {
+            %(clusterLabel)s="$cluster",
             namespace=~"$namespace",
             job=~"$job",
           }[30m]
@@ -121,6 +147,7 @@ local tbQueryOptions = tablePanel.queryOptions;
       sum (
         rate (
           django_cache_get_total {
+            %(clusterLabel)s="$cluster",
             namespace=~"$namespace",
             job=~"$job",
           }[30m]
@@ -151,6 +178,7 @@ local tbQueryOptions = tablePanel.queryOptions;
       sum (
         rate (
           django_db_execute_total {
+            %(clusterLabel)s="$cluster",
             namespace=~"$namespace",
             job=~"$job",
           }[$__rate_interval]
@@ -182,6 +210,7 @@ local tbQueryOptions = tablePanel.queryOptions;
         sum(
           rate(
             django_http_responses_total_by_status_view_method_total{
+              %(clusterLabel)s="$cluster",
               namespace=~"$namespace",
               job=~"$job",
               view!~"%(djangoIgnoredViews)s",
@@ -271,6 +300,7 @@ local tbQueryOptions = tablePanel.queryOptions;
         sum(
           irate(
             django_db_query_duration_seconds_bucket{
+              %(clusterLabel)s="$cluster",
               namespace=~"$namespace",
               job=~"$job",
             }[$__rate_interval]
@@ -335,6 +365,7 @@ local tbQueryOptions = tablePanel.queryOptions;
         sum(
           increase(
             django_db_new_connections_total{
+              %(clusterLabel)s="$cluster",
               namespace=~"$namespace",
               job=~"$job",
             }[$__rate_interval]
@@ -371,8 +402,9 @@ local tbQueryOptions = tablePanel.queryOptions;
     local migrationsAppliedQuery = |||
       max (
         django_migrations_applied_total {
-            namespace="$namespace",
-            job=~"$job"
+          %(clusterLabel)s="$cluster",
+          namespace="$namespace",
+          job=~"$job"
         }
       ) by (namespace, job)
     ||| % $._config,
@@ -394,14 +426,7 @@ local tbQueryOptions = tablePanel.queryOptions;
         stStandardOptions.threshold.step.withColor('green'),
       ]),
 
-    local migrationsUnAppliedQuery = |||
-      max (
-        django_migrations_unapplied_total {
-            namespace="$namespace",
-            job=~"$job"
-        }
-      ) by (namespace, job)
-    ||| % $._config,
+    local migrationsUnAppliedQuery = std.strReplace(migrationsAppliedQuery, 'applied', 'unapplied'),
 
     local migrationsUnAppliedStatPanel =
       statPanel.new(
@@ -428,6 +453,7 @@ local tbQueryOptions = tablePanel.queryOptions;
           sum by (type) (
             increase(
               django_db_errors_total{
+                %(clusterLabel)s="$cluster",
                 namespace=~"$namespace",
                 job=~"$job",
               }[1w]
@@ -480,6 +506,7 @@ local tbQueryOptions = tablePanel.queryOptions;
       sum(
         rate(
           django_cache_get_hits_total{
+            %(clusterLabel)s="$cluster",
             namespace=~"$namespace",
             job=~"$job",
           }[$__rate_interval]
@@ -554,7 +581,10 @@ local tbQueryOptions = tablePanel.queryOptions;
       dashboard.withLinks(
         [
           dashboard.link.dashboards.new('Django Dashboards', $._config.tags) +
-          dashboard.link.link.options.withTargetBlank(true),
+          dashboard.link.link.options.withTargetBlank(true) +
+          dashboard.link.link.options.withAsDropdown(true) +
+          dashboard.link.link.options.withIncludeVars(true) +
+          dashboard.link.link.options.withKeepTime(true),
         ]
       ) +
       dashboard.withPanels(

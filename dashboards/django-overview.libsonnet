@@ -1,656 +1,461 @@
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
+local dashboardUtil = import 'util.libsonnet';
 
 local dashboard = g.dashboard;
 local row = g.panel.row;
 local grid = g.util.grid;
-
-local variable = dashboard.variable;
-local datasource = variable.datasource;
-local query = variable.query;
-local prometheus = g.query.prometheus;
 
 local statPanel = g.panel.stat;
 local timeSeriesPanel = g.panel.timeSeries;
 local tablePanel = g.panel.table;
 
 // Stat
-local stOptions = statPanel.options;
 local stStandardOptions = statPanel.standardOptions;
-local stQueryOptions = statPanel.queryOptions;
 
 // Timeseries
-local tsOptions = timeSeriesPanel.options;
 local tsStandardOptions = timeSeriesPanel.standardOptions;
-local tsQueryOptions = timeSeriesPanel.queryOptions;
-local tsFieldConfig = timeSeriesPanel.fieldConfig;
-local tsCustom = tsFieldConfig.defaults.custom;
-local tsLegend = tsOptions.legend;
 local tsOverride = tsStandardOptions.override;
 
 // Table
-local tbOptions = tablePanel.options;
-local tbStandardOptions = tablePanel.standardOptions;
 local tbQueryOptions = tablePanel.queryOptions;
 
 {
+  local dashboardName = 'django-overview',
   grafanaDashboards+:: {
+    ['%s.json' % dashboardName]:
 
-    local datasourceVariable =
-      datasource.new(
-        'datasource',
-        'prometheus',
-      ) +
-      datasource.generalOptions.withLabel('Data source') +
-      {
-        current: {
-          selected: true,
-          text: $._config.datasourceName,
-          value: $._config.datasourceName,
-        },
-      },
+      local defaultVariables = dashboardUtil.variables($._config);
 
-    local clusterVariable =
-      query.new(
-        $._config.clusterLabel,
-        'label_values(django_http_responses_total_by_status_view_method_total{}, cluster)' % $._config,
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort() +
-      query.generalOptions.withLabel('Cluster') +
-      query.refresh.onLoad() +
-      query.refresh.onTime() +
-      (
-        if $._config.showMultiCluster
-        then query.generalOptions.showOnDashboard.withLabelAndValue()
-        else query.generalOptions.showOnDashboard.withNothing()
-      ),
+      local variables = [
+        defaultVariables.datasource,
+        defaultVariables.cluster,
+        defaultVariables.namespace,
+        defaultVariables.job,
+      ];
 
-    local namespaceVariable =
-      query.new(
-        'namespace',
-        'label_values(django_http_responses_total_by_status_view_method_total{%(clusterLabel)s="$cluster"}, namespace)' % $._config,
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort(1) +
-      query.generalOptions.withLabel('Namespace') +
-      query.selectionOptions.withMulti(false) +
-      query.selectionOptions.withIncludeAll(false) +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
-
-
-    local jobVariable =
-      query.new(
-        'job',
-        'label_values(django_http_responses_total_by_status_view_method_total{%(clusterLabel)s="$cluster", namespace=~"$namespace"}, job)' % $._config,
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort(1) +
-      query.generalOptions.withLabel('Job') +
-      query.selectionOptions.withMulti(false) +
-      query.selectionOptions.withIncludeAll(false) +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
-
-    local variables = [
-      datasourceVariable,
-      clusterVariable,
-      namespaceVariable,
-      jobVariable,
-    ],
-
-    local requestVolumeQuery = |||
-      round(
-        sum(
-          rate(
-            django_http_requests_total_by_view_transport_method_total{
-              %(clusterLabel)s="$cluster",
-              namespace=~"$namespace",
-              job=~"$job",
-              view!~"%(djangoIgnoredViews)s",
-            }[$__rate_interval]
+      local defaultFilters = dashboardUtil.filters($._config);
+      local queries = {
+        requestVolume: |||
+          round(
+            sum(
+              rate(
+                django_http_requests_total_by_view_transport_method_total{
+                  %(view)s
+                }[$__rate_interval]
+              )
+            ), 0.001
           )
-        ), 0.001
-      )
-    ||| % $._config,
+        ||| % defaultFilters,
 
-    local requestVolumeStatPanel =
-      statPanel.new(
-        'Request Volume',
-      ) +
-      stQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          requestVolumeQuery,
-        )
-      ) +
-      stStandardOptions.withUnit('reqps') +
-      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
-      stStandardOptions.thresholds.withSteps([
-        stStandardOptions.threshold.step.withValue(0) +
-        stStandardOptions.threshold.step.withColor('red'),
-        stStandardOptions.threshold.step.withValue(0.1) +
-        stStandardOptions.threshold.step.withColor('green'),
-      ]),
+        cacheHitrate: |||
+          sum (
+            rate (
+              django_cache_get_hits_total {
+                %(default)s
+              }[30m]
+            )
+          ) by (namespace, job)
+          /
+          sum (
+            rate (
+              django_cache_get_total {
+                %(default)s
+              }[30m]
+            )
+          ) by (namespace, job)
+        ||| % defaultFilters,
 
-    local cacheHitrateQuery = |||
-      sum (
-        rate (
-          django_cache_get_hits_total {
-            %(clusterLabel)s="$cluster",
-            namespace=~"$namespace",
-            job=~"$job",
-          }[30m]
-        )
-      ) by (namespace, job)
-      /
-      sum (
-        rate (
-          django_cache_get_total {
-            %(clusterLabel)s="$cluster",
-            namespace=~"$namespace",
-            job=~"$job",
-          }[30m]
-        )
-      ) by (namespace, job)
-    ||| % $._config,
 
-    local cacheHitrateStatPanel =
-      statPanel.new(
-        'Cache Hitrate [30m]',
-      ) +
-      stQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          cacheHitrateQuery,
-        )
-      ) +
-      stStandardOptions.withUnit('percentunit') +
-      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
-      stStandardOptions.thresholds.withSteps([
-        stStandardOptions.threshold.step.withValue(0) +
-        stStandardOptions.threshold.step.withColor('red'),
-        stStandardOptions.threshold.step.withValue(0.1) +
-        stStandardOptions.threshold.step.withColor('green'),
-      ]),
+        dbOps: |||
+          sum (
+            rate (
+              django_db_execute_total {
+                %(default)s
+              }[$__rate_interval]
+            )
+          ) by (namespace, job)
+        ||| % defaultFilters,
 
-    local dbOpsQuery = |||
-      sum (
-        rate (
-          django_db_execute_total {
-            %(clusterLabel)s="$cluster",
-            namespace=~"$namespace",
-            job=~"$job",
-          }[$__rate_interval]
-        )
-      ) by (namespace, job)
-    ||| % $._config,
+        response2xx: |||
+          round(
+            sum(
+              rate(
+                django_http_responses_total_by_status_view_method_total{
+                  %(view)s,
+                  status=~"2.*",
+                }[$__rate_interval]
+              ) > 0
+            ) by (job), 0.001
+          )
+        ||| % defaultFilters,
+        response3xx: std.strReplace(queries.response2xx, '2.*', '3.*'),
+        response4xx: std.strReplace(queries.response2xx, '2.*', '4.*'),
+        response5xx: std.strReplace(queries.response2xx, '2.*', '5.*'),
 
-    local dbOpsStatPanel =
-      statPanel.new(
-        'Database Ops',
-      ) +
-      stQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          dbOpsQuery,
-        )
-      ) +
-      stStandardOptions.withUnit('ops') +
-      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
-      stStandardOptions.thresholds.withSteps([
-        stStandardOptions.threshold.step.withValue(0) +
-        stStandardOptions.threshold.step.withColor('red'),
-        stStandardOptions.threshold.step.withValue(0.1) +
-        stStandardOptions.threshold.step.withColor('green'),
-      ]),
+        dbLatencyP50: |||
+          histogram_quantile(0.50,
+            sum(
+              irate(
+                django_db_query_duration_seconds_bucket{
+                  %(default)s
+                }[$__rate_interval]
+              ) > 0
+            ) by (vendor, namespace, job, le)
+          )
+        ||| % defaultFilters,
+        dbLatencyP95: std.strReplace(queries.dbLatencyP50, '0.50', '0.95'),
+        dbLatencyP99: std.strReplace(queries.dbLatencyP50, '0.50', '0.99'),
+        dbLatencyP999: std.strReplace(queries.dbLatencyP50, '0.50', '0.999'),
 
-    local response2xxQuery = |||
-      round(
-        sum(
-          rate(
-            django_http_responses_total_by_status_view_method_total{
-              %(clusterLabel)s="$cluster",
-              namespace=~"$namespace",
-              job=~"$job",
-              view!~"%(djangoIgnoredViews)s",
-              status=~"2.*",
-            }[$__rate_interval]
-          ) > 0
-        ) by (job), 0.001
-      )
-    ||| % $._config,
-    local response3xxQuery = std.strReplace(response2xxQuery, '2.*', '3.*'),
-    local response4xxQuery = std.strReplace(response2xxQuery, '2.*', '4.*'),
-    local response5xxQuery = std.strReplace(response2xxQuery, '2.*', '5.*'),
+        dbConnections: |||
+          round(
+            sum(
+              increase(
+                django_db_new_connections_total{
+                  %(default)s
+                }[$__rate_interval]
+              ) > 0
+            ) by (namespace, job, vendor)
+          )
+        ||| % defaultFilters,
 
-    local responseTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'Responses',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            response2xxQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '2xx'
-          ),
-          prometheus.new(
-            '$datasource',
-            response3xxQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '3xx'
-          ),
-          prometheus.new(
-            '$datasource',
-            response4xxQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '4xx'
-          ),
-          prometheus.new(
-            '$datasource',
-            response5xxQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '5xx'
-          ),
-        ]
-      ) +
-      tsStandardOptions.withUnit('reqps') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsStandardOptions.withOverrides([
-        tsOverride.byName.new('2xx') +
-        tsOverride.byName.withPropertiesFromOptions(
-          tsStandardOptions.color.withMode('fixed') +
-          tsStandardOptions.color.withFixedColor('green')
-        ),
-        tsOverride.byName.new('3xx') +
-        tsOverride.byName.withPropertiesFromOptions(
-          tsStandardOptions.color.withMode('fixed') +
-          tsStandardOptions.color.withFixedColor('blue')
-        ),
-        tsOverride.byName.new('4xx') +
-        tsOverride.byName.withPropertiesFromOptions(
-          tsStandardOptions.color.withMode('fixed') +
-          tsStandardOptions.color.withFixedColor('yellow')
-        ),
-        tsOverride.byName.new('5xx') +
-        tsOverride.byName.withPropertiesFromOptions(
-          tsStandardOptions.color.withMode('fixed') +
-          tsStandardOptions.color.withFixedColor('red')
-        ),
-      ]) +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.stacking.withMode('percent') +
-      tsCustom.withFillOpacity(100) +
-      tsCustom.withSpanNulls(false),
+        migrationsApplied: |||
+          max (
+            django_migrations_applied_total {
+              %(default)s
+            }
+          ) by (namespace, job)
+        ||| % defaultFilters,
+        migrationsUnapplied: std.strReplace(queries.migrationsApplied, 'applied', 'unapplied'),
 
-    local dbLatencyP50Query = |||
-      histogram_quantile(0.50,
-        sum(
-          irate(
-            django_db_query_duration_seconds_bucket{
-              %(clusterLabel)s="$cluster",
-              namespace=~"$namespace",
-              job=~"$job",
-            }[$__rate_interval]
-          ) > 0
-        ) by (vendor, namespace, job, le)
-      )
-    ||| % $._config,
-    local dbLatencyP95Query = std.strReplace(dbLatencyP50Query, '0.50', '0.95'),
-    local dbLatencyP99Query = std.strReplace(dbLatencyP50Query, '0.50', '0.99'),
-    local dbLatencyP999Query = std.strReplace(dbLatencyP50Query, '0.50', '0.999'),
+        topDbErrors1w: |||
+          round(
+            topk(10,
+              sum(
+                increase(
+                  django_db_errors_total{
+                    %(default)s
+                  }[1w]
+                ) > 0
+              ) by (type)
+            )
+          )
+        ||| % defaultFilters,
 
-    local dbLatencyTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'Database Latency',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            dbLatencyP50Query,
-          ) +
-          prometheus.withLegendFormat(
-            '50 - {{ vendor }}',
-          ),
-          prometheus.new(
-            '$datasource',
-            dbLatencyP95Query,
-          ) +
-          prometheus.withLegendFormat(
-            '95 - {{ vendor }}',
-          ),
-          prometheus.new(
-            '$datasource',
-            dbLatencyP99Query,
-          ) +
-          prometheus.withLegendFormat(
-            '99 - {{ vendor }}',
-          ),
-          prometheus.new(
-            '$datasource',
-            dbLatencyP999Query,
-          ) +
-          prometheus.withLegendFormat(
-            '99.9 - {{ vendor }}',
-          ),
-        ]
-      ) +
-      tsStandardOptions.withUnit('s') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withFillOpacity(10) +
-      tsCustom.withSpanNulls(false),
-
-    local dbConnectionsQuery = |||
-      round(
-        sum(
-          increase(
-            django_db_new_connections_total{
-              %(clusterLabel)s="$cluster",
-              namespace=~"$namespace",
-              job=~"$job",
-            }[$__rate_interval]
-          ) > 0
-        ) by (namespace, job, vendor)
-      )
-    ||| % $._config,
-
-    local dbConnectionsTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'Database Connections',
-      ) +
-      tsQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          dbConnectionsQuery,
-        ) +
-        prometheus.withLegendFormat(
-          '{{ vendor }}'
-        )
-      ) +
-      tsStandardOptions.withUnit('short') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.withFillOpacity(10) +
-      tsCustom.withSpanNulls(false),
-
-    local migrationsAppliedQuery = |||
-      max (
-        django_migrations_applied_total {
-          %(clusterLabel)s="$cluster",
-          namespace="$namespace",
-          job=~"$job"
-        }
-      ) by (namespace, job)
-    ||| % $._config,
-
-    local migrationsAppliedStatPanel =
-      statPanel.new(
-        'Migrations Applied',
-      ) +
-      stQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          migrationsAppliedQuery,
-        )
-      ) +
-      stStandardOptions.withUnit('short') +
-      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
-      stStandardOptions.thresholds.withSteps([
-        stStandardOptions.threshold.step.withValue(0) +
-        stStandardOptions.threshold.step.withColor('green'),
-      ]),
-
-    local migrationsUnAppliedQuery = std.strReplace(migrationsAppliedQuery, 'applied', 'unapplied'),
-
-    local migrationsUnAppliedStatPanel =
-      statPanel.new(
-        'Migrations Unapplied',
-      ) +
-      stQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          migrationsUnAppliedQuery,
-        )
-      ) +
-      stStandardOptions.withUnit('short') +
-      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
-      stStandardOptions.thresholds.withSteps([
-        stStandardOptions.threshold.step.withValue(0) +
-        stStandardOptions.threshold.step.withColor('green'),
-        stStandardOptions.threshold.step.withValue(0.1) +
-        stStandardOptions.threshold.step.withColor('red'),
-      ]),
-
-    local topDbErrors1wQuery = |||
-      round(
-        topk(10,
-          sum by (type) (
-            increase(
-              django_db_errors_total{
-                %(clusterLabel)s="$cluster",
-                namespace=~"$namespace",
-                job=~"$job",
-              }[1w]
+        cacheGetHits: |||
+          sum(
+            rate(
+              django_cache_get_hits_total{
+                %(default)s
+              }[$__rate_interval]
             ) > 0
-          )
-        )
-      )
-    ||| % $._config,
+          ) by (namespace, job, backend)
+        ||| % defaultFilters,
+        cacheGetMisses: std.strReplace(queries.cacheGetHits, 'django_cache_get_hits_total', 'django_cache_get_misses_total'),
+      };
 
-    local topDbErrors1wTable =
-      tablePanel.new(
-        'Top Database Errors (1w)',
-      ) +
-      tbStandardOptions.withUnit('short') +
-      tbOptions.withSortBy(
-        tbOptions.sortBy.withDisplayName('Type')
-      ) +
-      tbQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          topDbErrors1wQuery,
-        ) +
-        prometheus.withFormat('table') +
-        prometheus.withInstant(true)
-      ) +
-      tbQueryOptions.withTransformations([
-        tbQueryOptions.transformation.withId(
-          'organize'
-        ) +
-        tbQueryOptions.transformation.withOptions(
-          {
-            renameByName: {
-              namespace: 'Namespace',
-              job: 'Job',
-              type: 'Type',
-            },
-            indexByName: {
-              namespace: 0,
-              job: 1,
-              type: 2,
-            },
-            excludeByName: {
-              Time: true,
-            },
-          }
-        ),
-      ]),
+      local panels = {
 
-    local cacheGetHitsQuery = |||
-      sum(
-        rate(
-          django_cache_get_hits_total{
-            %(clusterLabel)s="$cluster",
-            namespace=~"$namespace",
-            job=~"$job",
-          }[$__rate_interval]
-        ) > 0
-      ) by (namespace, job, backend)
-    ||| % $._config,
-    local cacheGetMissesQuery = std.strReplace(cacheGetHitsQuery, 'django_cache_get_hits_total', 'django_cache_get_misses_total'),
-
-    local cacheGetTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'Cache Get',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            cacheGetHitsQuery,
-          ) +
-          prometheus.withLegendFormat(
-            'Hit - {{ backend }}',
+        requestVolumeStat:
+          dashboardUtil.statPanel(
+            'Request Volume',
+            'reqps',
+            queries.requestVolume,
+            'The number of requests received per second.',
+            mappings=[
+              stStandardOptions.thresholds.withSteps([
+                stStandardOptions.threshold.step.withValue(0) +
+                stStandardOptions.threshold.step.withColor('red'),
+                stStandardOptions.threshold.step.withValue(0.1) +
+                stStandardOptions.threshold.step.withColor('green'),
+              ]),
+            ]
           ),
-          prometheus.new(
-            '$datasource',
-            cacheGetMissesQuery,
-          ) +
-          prometheus.withLegendFormat(
-            'Miss - {{ backend }}',
+
+        cacheHitrateStat:
+          dashboardUtil.statPanel(
+            'Cache Hitrate [30m]',
+            'percentunit',
+            queries.cacheHitrate,
+            'The ratio of cache hits to total cache requests over the last 30 minutes. A higher hit rate indicates better cache performance.',
+            mappings=[
+              stStandardOptions.thresholds.withSteps([
+                stStandardOptions.threshold.step.withValue(0) +
+                stStandardOptions.threshold.step.withColor('red'),
+                stStandardOptions.threshold.step.withValue(0.1) +
+                stStandardOptions.threshold.step.withColor('green'),
+              ]),
+            ],
           ),
-        ]
-      ) +
-      tsStandardOptions.withUnit('ops') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['lastNotNull', 'mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.stacking.withMode('percent') +
-      tsCustom.withFillOpacity(100) +
-      tsCustom.withSpanNulls(false),
 
-    local summaryRow =
-      row.new(
-        title='Summary'
-      ),
+        dbOpsStat:
+          dashboardUtil.statPanel(
+            'Database Ops',
+            'ops',
+            queries.dbOps,
+            'The number of database operations (queries) executed per second.',
+            mappings=[
+              stStandardOptions.thresholds.withSteps([
+                stStandardOptions.threshold.step.withValue(0) +
+                stStandardOptions.threshold.step.withColor('red'),
+                stStandardOptions.threshold.step.withValue(0.1) +
+                stStandardOptions.threshold.step.withColor('green'),
+              ]),
+            ],
+          ),
 
-    local dbRow =
-      row.new(
-        title='Database',
-      ),
+        responseTimeSeries:
+          dashboardUtil.timeSeriesPanel(
+            'Responses',
+            'reqps',
+            [
+              {
+                expr: queries.response2xx,
+                legend: '2xx',
+              },
+              {
+                expr: queries.response3xx,
+                legend: '3xx',
+              },
+              {
+                expr: queries.response4xx,
+                legend: '4xx',
+              },
+              {
+                expr: queries.response5xx,
+                legend: '5xx',
+              },
+            ],
+            description='The number of HTTP responses sent per second, categorized by status code classes.',
+            overrides=[
+              tsOverride.byName.new('2xx') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('green')
+              ),
+              tsOverride.byName.new('3xx') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('blue')
+              ),
+              tsOverride.byName.new('4xx') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('yellow')
+              ),
+              tsOverride.byName.new('5xx') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('red')
+              ),
+            ],
+            stack='percent'
+          ),
 
-    local cacheRow =
-      row.new(
-        title='Cache',
-      ),
+        dbLatencyTimeSeries:
+          dashboardUtil.timeSeriesPanel(
+            'Database Latency',
+            's',
+            [
+              {
+                expr: queries.dbLatencyP50,
+                legend: '50 - {{ vendor }}',
+              },
+              {
+                expr: queries.dbLatencyP95,
+                legend: '95 - {{ vendor }}',
+              },
+              {
+                expr: queries.dbLatencyP99,
+                legend: '99 - {{ vendor }}',
+              },
+              {
+                expr: queries.dbLatencyP999,
+                legend: '99.9 - {{ vendor }}',
+              },
+            ],
+            description='The latency of database queries at various percentiles, grouped by database vendor. This helps identify performance issues and outliers in database response times.',
+          ),
 
-    'django-overview.json':
-      $._config.bypassDashboardValidation +
-      dashboard.new(
-        'Django / Overview',
-      ) +
-      dashboard.withDescription('A dashboard that monitors Django which focuses on giving a overview for the system (requests, db, cache). It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).') +
-      dashboard.withUid($._config.overviewDashboardUid) +
-      dashboard.withTags($._config.tags) +
-      dashboard.withTimezone('utc') +
-      dashboard.withEditable(true) +
-      dashboard.time.withFrom('now-6h') +
-      dashboard.time.withTo('now') +
-      dashboard.withVariables(variables) +
-      dashboard.withLinks(
+        dbConnectionsTimeSeries:
+          dashboardUtil.timeSeriesPanel(
+            'Database Connections',
+            'short',
+            queries.dbConnections,
+            '{{ vendor }}',
+            description='The number of new database connections established, grouped by database vendor. Monitoring connection trends can help identify potential bottlenecks or capacity issues.',
+          ),
+
+        migrationsAppliedStat:
+          dashboardUtil.statPanel(
+            'Migrations Applied',
+            'short',
+            queries.migrationsApplied,
+            'The total number of database migrations that have been applied.',
+          ),
+
+        migrationsUnAppliedStat:
+          dashboardUtil.statPanel(
+            'Migrations Unapplied',
+            'short',
+            queries.migrationsUnapplied,
+            'The total number of database migrations that are pending and have not yet been applied.',
+            mappings=stStandardOptions.thresholds.withSteps([
+              stStandardOptions.threshold.step.withValue(0) +
+              stStandardOptions.threshold.step.withColor('green'),
+              stStandardOptions.threshold.step.withValue(0.1) +
+              stStandardOptions.threshold.step.withColor('red'),
+            ])
+          ),
+
+        topDbErrors1wTable:
+          dashboardUtil.tablePanel(
+            'Top Database Errors (1w)',
+            'short',
+            queries.topDbErrors1w,
+            description='A table displaying the top 10 most frequent database error types over the past week. This helps identify recurring issues that may need attention.',
+            sortBy={
+              name: 'Type',
+              desc: true,
+            },
+            transformations=[
+              tbQueryOptions.transformation.withId(
+                'organize'
+              ) +
+              tbQueryOptions.transformation.withOptions(
+                {
+                  renameByName: {
+                    namespace: 'Namespace',
+                    job: 'Job',
+                    type: 'Type',
+                  },
+                  indexByName: {
+                    namespace: 0,
+                    job: 1,
+                    type: 2,
+                  },
+                  excludeByName: {
+                    Time: true,
+                  },
+                }
+              ),
+            ]
+          ),
+
+        cacheGetTimeSeries:
+          dashboardUtil.timeSeriesPanel(
+            'Cache Get Operations',
+            'ops',
+            [
+              {
+                expr: queries.cacheGetHits,
+                legend: 'Hit - {{ backend }}',
+              },
+              {
+                expr: queries.cacheGetMisses,
+                legend: 'Miss - {{ backend }}',
+              },
+            ],
+            description='The number of cache get operations, categorized by hits and misses, grouped by cache backend. This helps assess cache performance and effectiveness.',
+            stack='percent'
+          ),
+      };
+
+      local rows =
         [
-          dashboard.link.dashboards.new('Django Dashboards', $._config.tags) +
-          dashboard.link.link.options.withTargetBlank(true) +
-          dashboard.link.link.options.withAsDropdown(true) +
-          dashboard.link.link.options.withIncludeVars(true) +
-          dashboard.link.link.options.withKeepTime(true),
-        ]
-      ) +
-      dashboard.withPanels(
-        [
-          summaryRow +
+          row.new('Summary') +
           row.gridPos.withX(0) +
           row.gridPos.withY(0) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
-        grid.makeGrid(
-          [requestVolumeStatPanel, dbOpsStatPanel, cacheHitrateStatPanel],
+        grid.wrapPanels(
+          [
+            panels.requestVolumeStat,
+            panels.dbOpsStat,
+            panels.cacheHitrateStat,
+          ],
           panelWidth=8,
           panelHeight=4,
-          startY=1
+          startY=1,
+        ) +
+        grid.wrapPanels(
+          [
+            panels.responseTimeSeries,
+          ],
+          panelWidth=24,
+          panelHeight=6,
+          startY=5,
         ) +
         [
-          responseTimeSeriesPanel +
-          tablePanel.gridPos.withX(0) +
-          tablePanel.gridPos.withY(5) +
-          tablePanel.gridPos.withW(24) +
-          tablePanel.gridPos.withH(6),
-          dbRow +
+          row.new('Database') +
           row.gridPos.withX(0) +
           row.gridPos.withY(11) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
-          migrationsAppliedStatPanel +
-          tablePanel.gridPos.withX(0) +
-          tablePanel.gridPos.withY(12) +
-          tablePanel.gridPos.withW(6) +
-          tablePanel.gridPos.withH(3),
-          migrationsUnAppliedStatPanel +
-          tablePanel.gridPos.withX(6) +
-          tablePanel.gridPos.withY(12) +
-          tablePanel.gridPos.withW(6) +
-          tablePanel.gridPos.withH(3),
-          topDbErrors1wTable +
-          tablePanel.gridPos.withX(0) +
-          tablePanel.gridPos.withY(15) +
-          tablePanel.gridPos.withW(12) +
-          tablePanel.gridPos.withH(9),
-          dbConnectionsTimeSeriesPanel +
-          tablePanel.gridPos.withX(12) +
-          tablePanel.gridPos.withY(12) +
-          tablePanel.gridPos.withW(12) +
-          tablePanel.gridPos.withH(6),
-          dbLatencyTimeSeriesPanel +
-          tablePanel.gridPos.withX(12) +
-          tablePanel.gridPos.withY(18) +
-          tablePanel.gridPos.withW(12) +
-          tablePanel.gridPos.withH(6),
-          cacheRow +
-          tablePanel.gridPos.withX(0) +
-          tablePanel.gridPos.withY(24) +
-          tablePanel.gridPos.withW(24) +
-          tablePanel.gridPos.withH(1),
-          cacheGetTimeSeriesPanel +
-          tablePanel.gridPos.withX(0) +
-          tablePanel.gridPos.withY(25) +
-          tablePanel.gridPos.withW(24) +
-          tablePanel.gridPos.withH(6),
-        ]
+        ] +
+        grid.wrapPanels(
+          [
+            panels.migrationsAppliedStat,
+            panels.migrationsUnAppliedStat,
+          ],
+          panelWidth=12,
+          panelHeight=3,
+          startY=12,
+        ) +
+        grid.wrapPanels(
+          [
+            panels.dbConnectionsTimeSeries,
+            panels.dbLatencyTimeSeries,
+          ],
+          panelWidth=12,
+          panelHeight=5,
+          startY=15,
+        ) +
+        grid.wrapPanels(
+          [
+            panels.topDbErrors1wTable,
+          ],
+          panelWidth=24,
+          panelHeight=8,
+          startY=20,
+        ) +
+        [
+          row.new('Cache') +
+          row.gridPos.withX(0) +
+          row.gridPos.withY(28) +
+          row.gridPos.withW(24) +
+          row.gridPos.withH(1),
+        ] +
+        grid.wrapPanels(
+          [
+            panels.cacheGetTimeSeries,
+          ],
+          panelWidth=24,
+          panelHeight=6,
+          startY=29,
+        );
+
+      dashboardUtil.bypassDashboardValidation +
+      dashboard.new(
+        'Django / Overview',
       ) +
-      if $._config.annotation.enabled then
-        dashboard.withAnnotations($._config.customAnnotation)
-      else {},
+      dashboard.withDescription('A dashboard that monitors Django which focuses on giving a overview for the system (requests, db, cache). %s' % dashboardUtil.dashboardDescriptionLink) +
+      dashboard.withUid($._config.overviewDashboardUid) +
+      dashboard.withTags($._config.tags) +
+      dashboard.withTimezone('utc') +
+      dashboard.withEditable(false) +
+      dashboard.time.withFrom('now-6h') +
+      dashboard.time.withTo('now') +
+      dashboard.withVariables(variables) +
+      dashboard.withLinks(
+        dashboardUtil.dashboardLinks($._config)
+      ) +
+      dashboard.withPanels(
+        rows
+      ) +
+      dashboard.withAnnotations(
+        dashboardUtil.annotations($._config, defaultFilters)
+      ),
   },
 }

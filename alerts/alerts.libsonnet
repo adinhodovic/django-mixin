@@ -53,7 +53,7 @@
                 rate(
                   django_http_responses_total_by_status_view_method_total{
                     %(djangoSelector)s,
-                    status=~"^4.*",
+                    status=~"4.*",
                     view!~"%(djangoIgnoredViews)s"
                   }[%(django4xxInterval)s]
                 )
@@ -86,7 +86,7 @@
                 rate(
                   django_http_responses_total_by_status_view_method_total{
                     %(djangoSelector)s,
-                    status=~"^5.*",
+                    status=~"5.*",
                     view!~"%(djangoIgnoredViews)s"
                   }[%(django5xxInterval)s]
                 )

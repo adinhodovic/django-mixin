@@ -42,7 +42,7 @@
         rate(
           django_http_responses_total_by_status_view_method_total{
             job=~"django",
-            status=~"^4.*",
+            status=~"4.*",
             view!~"<unnamed view>|health_check:health_check_home|prometheus-django-metrics"
           }[5m]
         )
@@ -70,7 +70,7 @@
         rate(
           django_http_responses_total_by_status_view_method_total{
             job=~"django",
-            status=~"^5.*",
+            status=~"5.*",
             view!~"<unnamed view>|health_check:health_check_home|prometheus-django-metrics"
           }[5m]
         )

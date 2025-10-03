@@ -3,6 +3,8 @@ local annotation = g.dashboard.annotation;
 
 {
   _config+:: {
+    local this = self,
+
     // Bypasses grafana.com/dashboards validator
     bypassDashboardValidation: {
       __inputs: [],
@@ -39,6 +41,15 @@ local annotation = g.dashboard.annotation;
     django5xxSeverity: 'warning',
     django5xxInterval: '5m',
     django5xxThreshold: '5',  // percent
+
+    dashboardIds: {
+      'django-overview': 'django-overview-jkwq',
+      'django-requests-overview': 'django-requests-jkwq',
+    },
+    dashboardUrls: {
+      'django-overview': '%s/d/%s/django-overview' % [this.grafanaUrl, this.dashboardIds['django-overview']],
+      'django-requests-overview': '%s/d/%s/django-requests-overview' % [this.grafanaUrl, this.dashboardIds['django-requests-overview']],
+    },
 
     // Custom annotations to display in graphs
     annotation: {

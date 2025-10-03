@@ -2,7 +2,7 @@
   _config+:: {
     local this = self,
 
-    djangoSelector: 'job=~"django"',
+    djangoSelector: 'job="django"',
 
     // Default datasource name
     datasourceName: 'default',

@@ -4,7 +4,7 @@ A set of Grafana dashboards and Prometheus alerts for Django using the metrics f
 
 ## Dashboards
 
-- [Django Overview](https://grafana.com/grafana/dashboards/17617-django-overview/) - Django Overview, a simple overview of the database, cache and requests.
+- [Django Overview](https://grafana.com/grafana/dashboards/17617-django-overview/) - Django Overview, an overview of the database, cache and requests.
 
 ![django-overview](images/django-overview.png)
 
@@ -16,12 +16,11 @@ A set of Grafana dashboards and Prometheus alerts for Django using the metrics f
 
 ![django-requests-by-view](images/django-requests-by-view.png)
 
-There are also generated dashboards in the `./dashboards_out` directory.
+Generated dashboards are also in the `./dashboards_out` directory.
 
 ## How to use
 
-This mixin is designed to be vendored into the repo with your infrastructure config.
-To do this, use [jsonnet-bundler](https://github.com/jsonnet-bundler/jsonnet-bundler):
+This mixin is designed to be vendored into the repo with your infrastructure config. To do this, use [jsonnet-bundler](https://github.com/jsonnet-bundler/jsonnet-bundler):
 
 You then have three options for deploying your dashboards
 
@@ -33,8 +32,7 @@ Or import the dashboard using json in `./dashboards_out`, alternatively import t
 
 ## Generate config files
 
-You can manually generate the alerts, dashboards and rules files, but first you
-must install some tools:
+You can manually generate the alerts, dashboards and rules files, but first you must install some tools:
 
 ```sh
 brew install jsonnet jsonnet-bundler
@@ -55,10 +53,7 @@ make prometheus_alerts.yaml
 make dashboards_out
 ```
 
-The `prometheus_alerts.yaml` file then need to passed
-to your Prometheus server, and the files in `dashboards_out` need to be imported
-into you Grafana server. The exact details will depending on how you deploy your
-monitoring stack.
+The `prometheus_alerts.yaml` file then need to passed to your Prometheus server, and the files in `dashboards_out` need to be imported into you Grafana server. The exact details will depending on how you deploy your monitoring stack.
 
 ## Alerts
 

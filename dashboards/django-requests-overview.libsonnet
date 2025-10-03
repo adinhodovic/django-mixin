@@ -703,7 +703,7 @@ local tbOverride = tbStandardOptions.override;
         'Django / Requests / Overview',
       ) +
       dashboard.withDescription('A dashboard that monitors Django which focuses on giving a overview for requests. %s' % dashboardUtil.dashboardDescriptionLink) +
-      dashboard.withUid($._config.requestsOverviewDashboardUid) +
+      dashboard.withUid($._config.dashboardIds[dashboardName]) +
       dashboard.withTags($._config.tags) +
       dashboard.withTimezone('utc') +
       dashboard.withEditable(true) +

@@ -41,31 +41,16 @@
          "description": "The number of requests received per second.",
          "fieldConfig": {
             "defaults": {
-               "mappings": [
-                  {
-                     "fieldConfig": {
-                        "defaults": {
-                           "thresholds": {
-                              "steps": [
-                                 {
-                                    "color": "red",
-                                    "value": 0
-                                 },
-                                 {
-                                    "color": "green",
-                                    "value": 0.10000000000000001
-                                 }
-                              ]
-                           }
-                        }
-                     }
-                  }
-               ],
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
-                        "color": "green",
+                        "color": "red",
                         "value": 0
+                     },
+                     {
+                        "color": "green",
+                        "value": 0.10000000000000001
                      }
                   ]
                },
@@ -100,31 +85,16 @@
          "description": "The number of database operations (queries) executed per second.",
          "fieldConfig": {
             "defaults": {
-               "mappings": [
-                  {
-                     "fieldConfig": {
-                        "defaults": {
-                           "thresholds": {
-                              "steps": [
-                                 {
-                                    "color": "red",
-                                    "value": 0
-                                 },
-                                 {
-                                    "color": "green",
-                                    "value": 0.10000000000000001
-                                 }
-                              ]
-                           }
-                        }
-                     }
-                  }
-               ],
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
-                        "color": "green",
+                        "color": "red",
                         "value": 0
+                     },
+                     {
+                        "color": "green",
+                        "value": 0.10000000000000001
                      }
                   ]
                },
@@ -159,31 +129,16 @@
          "description": "The ratio of cache hits to total cache requests over the last 30 minutes. A higher hit rate indicates better cache performance.",
          "fieldConfig": {
             "defaults": {
-               "mappings": [
-                  {
-                     "fieldConfig": {
-                        "defaults": {
-                           "thresholds": {
-                              "steps": [
-                                 {
-                                    "color": "red",
-                                    "value": 0
-                                 },
-                                 {
-                                    "color": "green",
-                                    "value": 0.10000000000000001
-                                 }
-                              ]
-                           }
-                        }
-                     }
-                  }
-               ],
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
-                        "color": "green",
+                        "color": "red",
                         "value": 0
+                     },
+                     {
+                        "color": "green",
+                        "value": 0.10000000000000001
                      }
                   ]
                },
@@ -416,31 +371,16 @@
          "description": "The total number of database migrations that are pending and have not yet been applied.",
          "fieldConfig": {
             "defaults": {
-               "mappings": [
-                  {
-                     "fieldConfig": {
-                        "defaults": {
-                           "thresholds": {
-                              "steps": [
-                                 {
-                                    "color": "green",
-                                    "value": 0
-                                 },
-                                 {
-                                    "color": "red",
-                                    "value": 0.10000000000000001
-                                 }
-                              ]
-                           }
-                        }
-                     }
-                  }
-               ],
+               "mappings": [ ],
                "thresholds": {
                   "steps": [
                      {
                         "color": "green",
                         "value": 0
+                     },
+                     {
+                        "color": "red",
+                        "value": 0.10000000000000001
                      }
                   ]
                },

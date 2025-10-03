@@ -1,15 +1,6 @@
-local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
-local annotation = g.dashboard.annotation;
-
 {
   _config+:: {
     local this = self,
-
-    // Bypasses grafana.com/dashboards validator
-    bypassDashboardValidation: {
-      __inputs: [],
-      __requires: [],
-    },
 
     djangoSelector: 'job=~"django"',
 
@@ -21,13 +12,6 @@ local annotation = g.dashboard.annotation;
     clusterLabel: 'cluster',
 
     grafanaUrl: 'https://grafana.com',
-
-    overviewDashboardUid: 'django-overview-jkwq',
-    requestsOverviewDashboardUid: 'django-requests-jkwq',
-    requestsByViewDashboardUid: 'django-requests-by-view-jkwq',
-
-    overviewDashboardUrl: '%s/d/%s/django-overview' % [self.grafanaUrl, self.overviewDashboardUid],
-    requestsByViewDashboardUrl: '%s/d/%s/django-requests-by-view' % [self.grafanaUrl, self.requestsByViewDashboardUid],
 
     tags: ['django', 'django-mixin'],
 
@@ -45,10 +29,12 @@ local annotation = g.dashboard.annotation;
     dashboardIds: {
       'django-overview': 'django-overview-jkwq',
       'django-requests-overview': 'django-requests-jkwq',
+      'django-requests-by-view': 'django-requests-by-view-jkwq',
     },
     dashboardUrls: {
       'django-overview': '%s/d/%s/django-overview' % [this.grafanaUrl, this.dashboardIds['django-overview']],
       'django-requests-overview': '%s/d/%s/django-requests-overview' % [this.grafanaUrl, this.dashboardIds['django-requests-overview']],
+      'django-requests-by-view': '%s/d/%s/django-requests-by-view' % [this.grafanaUrl, this.dashboardIds['django-requests-by-view']],
     },
 
     // Custom annotations to display in graphs
@@ -59,15 +45,5 @@ local annotation = g.dashboard.annotation;
       iconColor: 'green',
       tags: [],
     },
-
-    customAnnotation:: if $._config.annotation.enabled then
-      annotation.withName($._config.annotation.name) +
-      annotation.withIconColor($._config.annotation.iconColor) +
-      annotation.withHide(false) +
-      annotation.datasource.withUid($._config.annotation.datasource) +
-      annotation.target.withMatchAny(true) +
-      annotation.target.withTags($._config.annotation.tags) +
-      annotation.target.withType('tags')
-    else {},
   },
 }

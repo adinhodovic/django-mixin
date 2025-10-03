@@ -162,13 +162,11 @@ local tbQueryOptions = tablePanel.queryOptions;
             'reqps',
             queries.requestVolume,
             'The number of requests received per second.',
-            mappings=[
-              stStandardOptions.thresholds.withSteps([
-                stStandardOptions.threshold.step.withValue(0) +
-                stStandardOptions.threshold.step.withColor('red'),
-                stStandardOptions.threshold.step.withValue(0.1) +
-                stStandardOptions.threshold.step.withColor('green'),
-              ]),
+            steps=[
+              stStandardOptions.threshold.step.withValue(0) +
+              stStandardOptions.threshold.step.withColor('red'),
+              stStandardOptions.threshold.step.withValue(0.1) +
+              stStandardOptions.threshold.step.withColor('green'),
             ]
           ),
 
@@ -178,13 +176,11 @@ local tbQueryOptions = tablePanel.queryOptions;
             'percentunit',
             queries.cacheHitrate,
             'The ratio of cache hits to total cache requests over the last 30 minutes. A higher hit rate indicates better cache performance.',
-            mappings=[
-              stStandardOptions.thresholds.withSteps([
-                stStandardOptions.threshold.step.withValue(0) +
-                stStandardOptions.threshold.step.withColor('red'),
-                stStandardOptions.threshold.step.withValue(0.1) +
-                stStandardOptions.threshold.step.withColor('green'),
-              ]),
+            steps=[
+              stStandardOptions.threshold.step.withValue(0) +
+              stStandardOptions.threshold.step.withColor('red'),
+              stStandardOptions.threshold.step.withValue(0.1) +
+              stStandardOptions.threshold.step.withColor('green'),
             ],
           ),
 
@@ -194,13 +190,11 @@ local tbQueryOptions = tablePanel.queryOptions;
             'ops',
             queries.dbOps,
             'The number of database operations (queries) executed per second.',
-            mappings=[
-              stStandardOptions.thresholds.withSteps([
-                stStandardOptions.threshold.step.withValue(0) +
-                stStandardOptions.threshold.step.withColor('red'),
-                stStandardOptions.threshold.step.withValue(0.1) +
-                stStandardOptions.threshold.step.withColor('green'),
-              ]),
+            steps=[
+              stStandardOptions.threshold.step.withValue(0) +
+              stStandardOptions.threshold.step.withColor('red'),
+              stStandardOptions.threshold.step.withValue(0.1) +
+              stStandardOptions.threshold.step.withColor('green'),
             ],
           ),
 
@@ -300,12 +294,12 @@ local tbQueryOptions = tablePanel.queryOptions;
             'short',
             queries.migrationsUnapplied,
             'The total number of database migrations that are pending and have not yet been applied.',
-            mappings=stStandardOptions.thresholds.withSteps([
+            steps=[
               stStandardOptions.threshold.step.withValue(0) +
               stStandardOptions.threshold.step.withColor('green'),
               stStandardOptions.threshold.step.withValue(0.1) +
               stStandardOptions.threshold.step.withColor('red'),
-            ])
+            ]
           ),
 
         topDbErrors1wTable:
@@ -441,7 +435,7 @@ local tbQueryOptions = tablePanel.queryOptions;
         'Django / Overview',
       ) +
       dashboard.withDescription('A dashboard that monitors Django which focuses on giving a overview for the system (requests, db, cache). %s' % dashboardUtil.dashboardDescriptionLink) +
-      dashboard.withUid($._config.overviewDashboardUid) +
+      dashboard.withUid($._config.dashboardIds[dashboardName]) +
       dashboard.withTags($._config.tags) +
       dashboard.withTimezone('utc') +
       dashboard.withEditable(false) +

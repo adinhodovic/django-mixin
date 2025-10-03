@@ -53,7 +53,8 @@ local tbQueryOptions = table.queryOptions;
     cluster: '%(clusterLabel)s="$cluster"' % config,
     namespace: 'namespace="$namespace"',
     job: 'job=~"$job"',
-    viewV: 'view=~"$view"',
+    viewV: 'view="$view"',
+    viewVMulti: 'view=~"$view"',
     ignoredViews: 'view!~"%(djangoIgnoredViews)s"' % config,
     methodV: 'method=~"$method"',
     adminViewRegex: config.adminViewRegex,
@@ -75,12 +76,23 @@ local tbQueryOptions = table.queryOptions;
 
     view: |||
       %(base)s,
+      %(viewVMulti)s,
+      %(ignoredViews)s
+    ||| % this,
+
+    viewSingle: |||
+      %(base)s,
       %(viewV)s,
       %(ignoredViews)s
     ||| % this,
 
     method: |||
       %(view)s,
+      %(methodV)s
+    ||| % this,
+
+    methodSingle: |||
+      %(viewSingle)s,
       %(methodV)s
     ||| % this,
   },
@@ -158,6 +170,11 @@ local tbQueryOptions = table.queryOptions;
       query.selectionOptions.withIncludeAll(true) +
       query.refresh.onLoad() +
       query.refresh.onTime(),
+
+    viewSingle:
+      this.view +
+      query.selectionOptions.withMulti(false) +
+      query.selectionOptions.withIncludeAll(false),
 
     method:
       query.new(

@@ -24,7 +24,7 @@ exclusions:
       - dashboard: Django / Requests / Overview
         panel: API & Other Views Request Latency [1h]
       - dashboard: Django / Requests / Overview
-        panel: Admin Request Latency [1h]
+        panel: Admin Views Request Latency [1h]
       - dashboard: Django / Requests / By View
         panel: Success Rate (non 4xx-5xx responses) [1w]
       - dashboard: Django / Requests / By View

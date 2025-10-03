@@ -350,7 +350,7 @@ local tbOverride = tbStandardOptions.override;
                   tbPanelOptions.link.withTitle('Go To View') +
                   tbPanelOptions.link.withType('dashboard') +
                   tbPanelOptions.link.withUrl(
-                    '/d/%s/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.requestsByViewDashboardUid
+                    '/d/%s?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
                   ) +
                   tbPanelOptions.link.withTargetBlank(true)
                 )
@@ -457,7 +457,7 @@ local tbOverride = tbStandardOptions.override;
                   tbPanelOptions.link.withTitle('Go To View') +
                   tbPanelOptions.link.withType('dashboard') +
                   tbPanelOptions.link.withUrl(
-                    '/d/%s/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.requestsByViewDashboardUid
+                    '/d/%s?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
                   ) +
                   tbPanelOptions.link.withTargetBlank(true)
                 )
@@ -504,7 +504,7 @@ local tbOverride = tbStandardOptions.override;
                   tbPanelOptions.link.withTitle('Go To View') +
                   tbPanelOptions.link.withType('dashboard') +
                   tbPanelOptions.link.withUrl(
-                    '/d/%s/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.requestsByViewDashboardUid
+                    '/d/%s?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
                   ) +
                   tbPanelOptions.link.withTargetBlank(true)
                 )
@@ -585,7 +585,7 @@ local tbOverride = tbStandardOptions.override;
                   tbPanelOptions.link.withTitle('Go To View') +
                   tbPanelOptions.link.withType('dashboard') +
                   tbPanelOptions.link.withUrl(
-                    '/d/%s/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.requestsByViewDashboardUid
+                    '/d/%s?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
                   ) +
                   tbPanelOptions.link.withTargetBlank(true)
                 )

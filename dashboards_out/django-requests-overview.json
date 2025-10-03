@@ -388,7 +388,7 @@
                               "targetBlank": true,
                               "title": "Go To View",
                               "type": "dashboard",
-                              "url": "/d/django-requests-by-view-jkwq/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
+                              "url": "/d/django-requests-by-view-jkwq?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
                            }
                         ]
                      }
@@ -634,7 +634,7 @@
                               "targetBlank": true,
                               "title": "Go To View",
                               "type": "dashboard",
-                              "url": "/d/django-requests-by-view-jkwq/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
+                              "url": "/d/django-requests-by-view-jkwq?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
                            }
                         ]
                      }
@@ -758,7 +758,7 @@
                               "targetBlank": true,
                               "title": "Go To View",
                               "type": "dashboard",
-                              "url": "/d/django-requests-by-view-jkwq/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
+                              "url": "/d/django-requests-by-view-jkwq?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
                            }
                         ]
                      }
@@ -908,7 +908,7 @@
                               "targetBlank": true,
                               "title": "Go To View",
                               "type": "dashboard",
-                              "url": "/d/django-requests-by-view-jkwq/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
+                              "url": "/d/django-requests-by-view-jkwq?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}"
                            }
                         ]
                      }

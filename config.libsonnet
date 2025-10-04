@@ -41,9 +41,10 @@
     annotation: {
       enabled: false,
       name: 'Custom Annotation',
-      datasource: '-- Grafana --',
-      iconColor: 'green',
       tags: [],
+      datasource: '-- Grafana --',
+      iconColor: 'blue',
+      type: 'tags',
     },
   },
 }

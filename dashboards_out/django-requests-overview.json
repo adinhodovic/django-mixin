@@ -791,7 +791,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  topk(10,\n    sum by (namespace, job, view) (\n      increase(\n        django_http_exceptions_total_by_view_total{\n          cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n,\nview=~\"$view\",\nview!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\"\n\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
+               "expr": "round(\n  topk(10,\n    sum by (namespace, job, view) (\n      increase(\n        django_http_exceptions_total_by_view_total{\n          cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n,\nview!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\"\n\n        }[1w]\n      ) > 0\n    )\n  )\n)\n",
                "format": "table",
                "instant": true
             }
@@ -941,7 +941,7 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  topk(10,\n    sum(\n      increase(\n        django_http_responses_total_by_status_view_method_total{\n          cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n,\nview=~\"$view\",\nview!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\"\n,\nmethod=~\"$method\"\n\n        }[1w]\n      ) > 0\n    ) by (namespace, job, view)\n  )\n)\n",
+               "expr": "round(\n  topk(10,\n    sum(\n      increase(\n        django_http_responses_total_by_status_view_method_total{\n          cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n,\nview!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\"\n\n        }[1w]\n      ) > 0\n    ) by (namespace, job, view)\n  )\n)\n",
                "format": "table",
                "instant": true
             }
@@ -1117,7 +1117,7 @@
             "label": "Method",
             "multi": true,
             "name": "method",
-            "query": "label_values(django_http_responses_total_by_status_view_method_total{cluster=\"$cluster\", namespace=\"$namespace\", job=~\"$job\", view=\"$view\"}, method)",
+            "query": "label_values(django_http_responses_total_by_status_view_method_total{cluster=\"$cluster\", namespace=\"$namespace\", job=~\"$job\", view=~\"$view\"}, method)",
             "refresh": 2,
             "sort": 1,
             "type": "query"

@@ -140,7 +140,7 @@ local tbOverride = tbStandardOptions.override;
               sum by (namespace, job, view) (
                 increase(
                   django_http_exceptions_total_by_view_total{
-                    %(view)s
+                    %(defaultIgnoredViews)s
                   }[1w]
                 ) > 0
               )
@@ -168,7 +168,7 @@ local tbOverride = tbStandardOptions.override;
               sum(
                 increase(
                   django_http_responses_total_by_status_view_method_total{
-                    %(method)s
+                    %(defaultIgnoredViews)s
                   }[1w]
                 ) > 0
               ) by (namespace, job, view)

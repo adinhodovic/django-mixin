@@ -40,7 +40,7 @@ local tbQueryOptions = tablePanel.queryOptions;
             sum(
               rate(
                 django_http_requests_total_by_view_transport_method_total{
-                  %(view)s
+                  %(defaultIgnoredViews)s
                 }[$__rate_interval]
               )
             ), 0.001
@@ -81,7 +81,7 @@ local tbQueryOptions = tablePanel.queryOptions;
             sum(
               rate(
                 django_http_responses_total_by_status_view_method_total{
-                  %(view)s,
+                  %(defaultIgnoredViews)s,
                   status=~"2.*",
                 }[$__rate_interval]
               ) > 0

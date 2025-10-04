@@ -80,6 +80,11 @@ local tbQueryOptions = table.queryOptions;
       %(ignoredViews)s
     ||| % this,
 
+    defaultIgnoredViews: |||
+      %(base)s,
+      %(ignoredViews)s
+    ||| % this,
+
     viewSingle: |||
       %(base)s,
       %(viewV)s,
@@ -179,7 +184,7 @@ local tbQueryOptions = table.queryOptions;
     method:
       query.new(
         'method',
-        'label_values(django_http_responses_total_by_status_view_method_total{%(cluster)s, %(namespace)s, %(job)s, %(viewV)s}, method)' % defaultFilters
+        'label_values(django_http_responses_total_by_status_view_method_total{%(cluster)s, %(namespace)s, %(job)s, %(viewVMulti)s}, method)' % defaultFilters
       ) +
       query.withDatasourceFromVariable(this.datasource) +
       query.withSort() +

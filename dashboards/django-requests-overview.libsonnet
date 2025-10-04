@@ -1,970 +1,723 @@
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
+local dashboardUtil = import 'util.libsonnet';
 
 local dashboard = g.dashboard;
 local row = g.panel.row;
 local grid = g.util.grid;
-
-local variable = dashboard.variable;
-local datasource = variable.datasource;
-local query = variable.query;
-local prometheus = g.query.prometheus;
 
 local statPanel = g.panel.stat;
 local timeSeriesPanel = g.panel.timeSeries;
 local tablePanel = g.panel.table;
 
 // Stat
-local stOptions = statPanel.options;
 local stStandardOptions = statPanel.standardOptions;
-local stQueryOptions = statPanel.queryOptions;
 
 // Timeseries
-local tsOptions = timeSeriesPanel.options;
 local tsStandardOptions = timeSeriesPanel.standardOptions;
-local tsQueryOptions = timeSeriesPanel.queryOptions;
-local tsFieldConfig = timeSeriesPanel.fieldConfig;
-local tsCustom = tsFieldConfig.defaults.custom;
-local tsLegend = tsOptions.legend;
 local tsOverride = tsStandardOptions.override;
 
 // Table
-local tbOptions = tablePanel.options;
 local tbStandardOptions = tablePanel.standardOptions;
 local tbQueryOptions = tablePanel.queryOptions;
 local tbPanelOptions = tablePanel.panelOptions;
 local tbOverride = tbStandardOptions.override;
 
 {
+  local dashboardName = 'django-requests-overview',
   grafanaDashboards+:: {
+    ['%s.json' % dashboardName]:
 
-    local datasourceVariable =
-      datasource.new(
-        'datasource',
-        'prometheus',
-      ) +
-      datasource.generalOptions.withLabel('Data source') +
-      {
-        current: {
-          selected: true,
-          text: $._config.datasourceName,
-          value: $._config.datasourceName,
-        },
-      },
+      local defaultVariables = dashboardUtil.variables($._config);
 
-    local clusterVariable =
-      query.new(
-        $._config.clusterLabel,
-        'label_values(django_http_responses_total_by_status_view_method_total{}, cluster)' % $._config,
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort() +
-      query.generalOptions.withLabel('Cluster') +
-      query.refresh.onLoad() +
-      query.refresh.onTime() +
-      (
-        if $._config.showMultiCluster
-        then query.generalOptions.showOnDashboard.withLabelAndValue()
-        else query.generalOptions.showOnDashboard.withNothing()
-      ),
+      local variables = [
+        defaultVariables.datasource,
+        defaultVariables.cluster,
+        defaultVariables.namespace,
+        defaultVariables.job,
+        defaultVariables.view,
+        defaultVariables.method,
+      ];
 
-    local namespaceVariable =
-      query.new(
-        'namespace',
-        'label_values(django_http_responses_total_by_status_view_method_total{%(clusterLabel)s="$cluster"}, namespace)' % $._config,
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort(1) +
-      query.generalOptions.withLabel('Namespace') +
-      query.selectionOptions.withMulti(false) +
-      query.selectionOptions.withIncludeAll(false) +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
+      local defaultFilters = dashboardUtil.filters($._config);
+      local queries = {
 
-    local jobVariable =
-      query.new(
-        'job',
-        'label_values(django_http_responses_total_by_status_view_method_total{%(clusterLabel)s="$cluster", namespace=~"$namespace"}, job)' % $._config,
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort(1) +
-      query.generalOptions.withLabel('Job') +
-      query.selectionOptions.withMulti(false) +
-      query.selectionOptions.withIncludeAll(false) +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
-
-    local defaultFilters = 'namespace=~"$namespace", job=~"$job"',
-
-    local viewVariable =
-      query.new(
-        'view',
-        'label_values(django_http_responses_total_by_status_view_method_total{%s="$cluster", %s, view!~"%s"}, view)' % [$._config.clusterLabel, defaultFilters, $._config.djangoIgnoredViews],
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort(1) +
-      query.generalOptions.withLabel('View') +
-      query.selectionOptions.withMulti(true) +
-      query.selectionOptions.withIncludeAll(true) +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
-
-    local methodVariable =
-      query.new(
-        'method',
-        'label_values(django_http_responses_total_by_status_view_method_total{%s="$cluster", %s, view=~"$view"}, method)' % [$._config.clusterLabel, defaultFilters],
-      ) +
-      query.withDatasourceFromVariable(datasourceVariable) +
-      query.withSort(1) +
-      query.generalOptions.withLabel('Method') +
-      query.selectionOptions.withMulti(true) +
-      query.selectionOptions.withIncludeAll(true) +
-      query.refresh.onLoad() +
-      query.refresh.onTime(),
-
-    local variables = [
-      datasourceVariable,
-      clusterVariable,
-      namespaceVariable,
-      jobVariable,
-      viewVariable,
-      methodVariable,
-    ],
-
-    local requestVolumeQuery = |||
-      round(
-        sum(
-          rate(
-            django_http_requests_total_by_view_transport_method_total{
-              %(clusterLabel)s="$cluster",
-              namespace=~"$namespace",
-              job=~"$job",
-              view=~"$view",
-              view!~"%(djangoIgnoredViews)s",
-              method=~"$method"
-            }[$__rate_interval]
+        requestVolume: |||
+          round(
+            sum(
+              rate(
+                django_http_requests_total_by_view_transport_method_total{
+                  %(method)s
+                }[$__rate_interval]
+              )
+            ), 0.001
           )
-        ), 0.001
-      )
-    ||| % $._config,
+        ||| % defaultFilters,
 
-    local requestVolumeStatPanel =
-      statPanel.new(
-        'Request Volume',
-      ) +
-      stQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          requestVolumeQuery,
-        )
-      ) +
-      stStandardOptions.withUnit('reqps') +
-      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
-      stStandardOptions.thresholds.withSteps([
-        stStandardOptions.threshold.step.withValue(0.0) +
-        stStandardOptions.threshold.step.withColor('red'),
-        stStandardOptions.threshold.step.withValue(0.001) +
-        stStandardOptions.threshold.step.withColor('green'),
-      ]),
-
-    local requestSuccessRateQuery = |||
-      sum(
-        rate(
-          django_http_responses_total_by_status_view_method_total{
-            %(clusterLabel)s="$cluster",
-            namespace=~"$namespace",
-            job=~"$job",
-            view=~"$view",
-            view!~"%(djangoIgnoredViews)s",
-            method=~"$method",
-            status!~"[4-5].*"
-          }[$__rate_interval]
-        )
-      ) /
-      sum(
-        rate(
-          django_http_responses_total_by_status_view_method_total{
-            %(clusterLabel)s="$cluster",
-            namespace=~"$namespace",
-            job=~"$job",
-            view=~"$view",
-            view!~"%(djangoIgnoredViews)s",
-            method=~"$method"
-          }[$__rate_interval]
-        )
-      )
-    ||| % $._config,
-
-    local requestSuccessRateStatPanel =
-      statPanel.new(
-        'Success Rate (non 4-5xx responses)',
-      ) +
-      stQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          requestSuccessRateQuery,
-        )
-      ) +
-      stStandardOptions.withUnit('percentunit') +
-      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
-      stStandardOptions.thresholds.withSteps([
-        stStandardOptions.threshold.step.withValue(0.90) +
-        stStandardOptions.threshold.step.withColor('red'),
-        stStandardOptions.threshold.step.withValue(0.95) +
-        stStandardOptions.threshold.step.withColor('yellow'),
-        stStandardOptions.threshold.step.withValue(0.99) +
-        stStandardOptions.threshold.step.withColor('green'),
-      ]),
-
-    local requestBytesP95Query = |||
-      histogram_quantile(0.95,
-        sum (
-          rate (
-            django_http_requests_body_total_bytes_bucket {
-              %(clusterLabel)s="$cluster",
-              namespace=~"$namespace",
-              job=~"$job",
-            }[$__rate_interval]
-          )
-        ) by (job, le)
-      )
-    ||| % $._config,
-
-    local requestBytesStatPanel =
-      statPanel.new(
-        'Request Body Size (P95)',
-      ) +
-      stQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          requestBytesP95Query,
-        )
-      ) +
-      stStandardOptions.withUnit('decbytes') +
-      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
-      stStandardOptions.thresholds.withSteps([
-        stStandardOptions.threshold.step.withValue(0.1) +
-        stStandardOptions.threshold.step.withColor('red'),
-        stStandardOptions.threshold.step.withValue(0.2) +
-        stStandardOptions.threshold.step.withColor('yellow'),
-        stStandardOptions.threshold.step.withValue(0.3) +
-        stStandardOptions.threshold.step.withColor('green'),
-      ]),
-
-    local requestLatencyP95SummaryQuery = |||
-      histogram_quantile(0.95,
-        sum (
-          irate(
-            django_http_requests_latency_seconds_by_view_method_bucket{
-              %(clusterLabel)s="$cluster",
-              namespace=~"$namespace",
-              job=~"$job",
-              view!~"%(djangoIgnoredViews)s",
-            }[$__rate_interval]
-          )
-        ) by (job, le)
-      )
-    ||| % $._config,
-
-    local requestLatencyP95SummaryStatPanel =
-      statPanel.new(
-        'Request Latency (P95)',
-      ) +
-      stQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          requestLatencyP95SummaryQuery,
-        )
-      ) +
-      stStandardOptions.withUnit('s') +
-      stOptions.reduceOptions.withCalcs(['lastNotNull']) +
-      stStandardOptions.thresholds.withSteps([
-        stStandardOptions.threshold.step.withValue(0) +
-        stStandardOptions.threshold.step.withColor('green'),
-        stStandardOptions.threshold.step.withValue(2500) +
-        stStandardOptions.threshold.step.withColor('yellow'),
-        stStandardOptions.threshold.step.withValue(5000) +
-        stStandardOptions.threshold.step.withColor('red'),
-      ]),
-
-    local apiResponse2xxQuery = |||
-      round(
-        sum(
-          rate(
-            django_http_responses_total_by_status_view_method_total{
-              %(clusterLabel)s="$cluster",
-              namespace=~"$namespace",
-              job=~"$job",
-              view=~"$view",
-              view!~"%(djangoIgnoredViews)s",
-              method=~"$method",
-              status=~"2.*",
-              view!~"%(adminViewRegex)s",
-            }[$__rate_interval]
-          ) > 0
-        ) by (namespace, job, view), 0.001
-      )
-    ||| % $._config,
-    local apiResponse4xxQuery = std.strReplace(apiResponse2xxQuery, '2.*', '4.*'),
-    local apiResponse5xxQuery = std.strReplace(apiResponse2xxQuery, '2.*', '5.*'),
-
-    local apiResponseTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'API & Other Views Response Status',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            apiResponse2xxQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ view }} / 2xx'
-          ),
-          prometheus.new(
-            '$datasource',
-            apiResponse4xxQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ view }} / 4xx'
-          ),
-          prometheus.new(
-            '$datasource',
-            apiResponse5xxQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ view }} / 5xx'
-          ),
-        ]
-      ) +
-      tsStandardOptions.withUnit('reqps') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsStandardOptions.withOverrides([
-        tsOverride.byName.new('2xx') +
-        tsOverride.byName.withPropertiesFromOptions(
-          tsStandardOptions.color.withMode('fixed') +
-          tsStandardOptions.color.withFixedColor('green')
-        ),
-        tsOverride.byName.new('4xx') +
-        tsOverride.byName.withPropertiesFromOptions(
-          tsStandardOptions.color.withMode('fixed') +
-          tsStandardOptions.color.withFixedColor('yellow')
-        ),
-        tsOverride.byName.new('5xx') +
-        tsOverride.byName.withPropertiesFromOptions(
-          tsStandardOptions.color.withMode('fixed') +
-          tsStandardOptions.color.withFixedColor('red')
-        ),
-      ]) +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.stacking.withMode('value') +
-      tsCustom.withFillOpacity(100) +
-      tsCustom.withSpanNulls(false),
-
-    local apiRequestLatencyP50Query = |||
-      histogram_quantile(0.50,
-        sum(
-          rate(
-            django_http_requests_latency_seconds_by_view_method_bucket{
-              %(clusterLabel)s="$cluster",
-              namespace=~"$namespace",
-              job=~"$job",
-              view=~"$view",
-              view!~"%(djangoIgnoredViews)s|",
-              view!~"%(adminViewRegex)s",
-              method=~"$method"
-            }[1h]
-          ) > 0
-        ) by (namespace, job, view, le)
-      )
-    ||| % $._config,
-    local apiRequestLatencyP95Query = std.strReplace(apiRequestLatencyP50Query, '0.50', '0.95'),
-    local apiRequestLatencyP99Query = std.strReplace(apiRequestLatencyP50Query, '0.50', '0.99'),
-
-    local apiRequestLatencyTable =
-      tablePanel.new(
-        'API & Other Views Request Latency [1h]',
-      ) +
-      tbOptions.withSortBy(
-        tbOptions.sortBy.withDisplayName('P50 Latency') +
-        tbOptions.sortBy.withDesc(true)
-      ) +
-      tbOptions.footer.withEnablePagination(true) +
-      tbStandardOptions.withUnit('dtdurations') +
-      tbQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            apiRequestLatencyP50Query,
-          ) +
-          prometheus.withFormat('table') +
-          prometheus.withInstant(true),
-          prometheus.new(
-            '$datasource',
-            apiRequestLatencyP95Query,
-          ) +
-          prometheus.withFormat('table') +
-          prometheus.withInstant(true),
-          prometheus.new(
-            '$datasource',
-            apiRequestLatencyP99Query,
-          ) +
-          prometheus.withFormat('table') +
-          prometheus.withInstant(true),
-        ]
-      ) +
-      tbQueryOptions.withTransformations([
-        tbQueryOptions.transformation.withId(
-          'merge'
-        ),
-        tbQueryOptions.transformation.withId(
-          'organize'
-        ) +
-        tbQueryOptions.transformation.withOptions(
-          {
-            renameByName: {
-              job: 'Job',
-              namespace: 'Namespace',
-              view: 'View',
-              'Value #A': 'P50 Latency',
-              'Value #B': 'P95 Latency',
-              'Value #C': 'P99 Latency',
-            },
-            indexByName: {
-              namespace: 0,
-              job: 1,
-              view: 2,
-              'Value #A': 3,
-              'Value #B': 4,
-              'Value #C': 5,
-            },
-            excludeByName: {
-              Time: true,
-            },
-          }
-        ),
-      ]) +
-      tbStandardOptions.withOverrides([
-        tbOverride.byName.new('View') +
-        tbOverride.byName.withPropertiesFromOptions(
-          tbStandardOptions.withLinks(
-            tbPanelOptions.link.withTitle('Go To View') +
-            tbPanelOptions.link.withType('dashboard') +
-            tbPanelOptions.link.withUrl(
-              '/d/%s/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.requestsByViewDashboardUid
-            ) +
-            tbPanelOptions.link.withTargetBlank(true)
-          )
-        ),
-      ]),
-
-    local adminResponse2xxQuery = std.strReplace(apiResponse2xxQuery, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
-    local adminResponse4xxQuery = std.strReplace(apiResponse4xxQuery, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
-    local adminResponse5xxQuery = std.strReplace(apiResponse5xxQuery, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
-
-    local adminResponseTimeSeriesPanel =
-      timeSeriesPanel.new(
-        'Admin Views Response Status',
-      ) +
-      tsQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            adminResponse2xxQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ view }} / 2xx'
-          ),
-          prometheus.new(
-            '$datasource',
-            adminResponse4xxQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ view }} / 4xx'
-          ),
-          prometheus.new(
-            '$datasource',
-            adminResponse5xxQuery,
-          ) +
-          prometheus.withLegendFormat(
-            '{{ view }} / 5xx'
-          ),
-        ]
-      ) +
-      tsStandardOptions.withUnit('reqps') +
-      tsOptions.tooltip.withMode('multi') +
-      tsOptions.tooltip.withSort('desc') +
-      tsStandardOptions.withOverrides([
-        tsOverride.byName.new('2xx') +
-        tsOverride.byName.withPropertiesFromOptions(
-          tsStandardOptions.color.withMode('fixed') +
-          tsStandardOptions.color.withFixedColor('green')
-        ),
-        tsOverride.byName.new('4xx') +
-        tsOverride.byName.withPropertiesFromOptions(
-          tsStandardOptions.color.withMode('fixed') +
-          tsStandardOptions.color.withFixedColor('yellow')
-        ),
-        tsOverride.byName.new('5xx') +
-        tsOverride.byName.withPropertiesFromOptions(
-          tsStandardOptions.color.withMode('fixed') +
-          tsStandardOptions.color.withFixedColor('red')
-        ),
-      ]) +
-      tsLegend.withShowLegend(true) +
-      tsLegend.withDisplayMode('table') +
-      tsLegend.withPlacement('right') +
-      tsLegend.withCalcs(['mean', 'max']) +
-      tsLegend.withSortBy('Mean') +
-      tsLegend.withSortDesc(true) +
-      tsCustom.stacking.withMode('value') +
-      tsCustom.withFillOpacity(100) +
-      tsCustom.withSpanNulls(false),
-
-    local adminRequestLatencyP50Query = std.strReplace(apiRequestLatencyP50Query, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
-    local adminRequestLatencyP95Query = std.strReplace(apiRequestLatencyP95Query, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
-    local adminRequestLatencyP99Query = std.strReplace(apiRequestLatencyP99Query, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
-
-    local adminRequestLatencyTable =
-      tablePanel.new(
-        'Admin Request Latency [1h]',
-      ) +
-      tbOptions.withSortBy(
-        tbOptions.sortBy.withDisplayName('P50 Latency') +
-        tbOptions.sortBy.withDesc(true)
-      ) +
-      tbOptions.footer.withEnablePagination(true) +
-      tbStandardOptions.withUnit('dtdurations') +
-      tbQueryOptions.withTargets(
-        [
-          prometheus.new(
-            '$datasource',
-            adminRequestLatencyP50Query,
-          ) +
-          prometheus.withFormat('table') +
-          prometheus.withInstant(true),
-          prometheus.new(
-            '$datasource',
-            adminRequestLatencyP95Query,
-          ) +
-          prometheus.withFormat('table') +
-          prometheus.withInstant(true),
-          prometheus.new(
-            '$datasource',
-            adminRequestLatencyP99Query,
-          ) +
-          prometheus.withFormat('table') +
-          prometheus.withInstant(true),
-        ]
-      ) +
-      tbQueryOptions.withTransformations([
-        tbQueryOptions.withTransformations([
-          tbQueryOptions.transformation.withId(
-            'merge'
-          ),
-          tbQueryOptions.transformation.withId(
-            'organize'
-          ) +
-          tbQueryOptions.transformation.withOptions(
-            {
-              renameByName: {
-                job: 'Job',
-                namespace: 'Namespace',
-                view: 'View',
-                'Value #A': 'P50 Latency',
-                'Value #B': 'P95 Latency',
-                'Value #C': 'P99 Latency',
-              },
-              indexByName: {
-                namespace: 0,
-                job: 1,
-                view: 2,
-                'Value #A': 3,
-                'Value #B': 4,
-                'Value #C': 5,
-              },
-              excludeByName: {
-                Time: true,
-              },
-            }
-          ),
-        ]),
-      ]) +
-      tbStandardOptions.withOverrides([
-        tbOverride.byName.new('View') +
-        tbOverride.byName.withPropertiesFromOptions(
-          tbStandardOptions.withLinks(
-            tbPanelOptions.link.withTitle('Go To View') +
-            tbPanelOptions.link.withType('dashboard') +
-            tbPanelOptions.link.withUrl(
-              '/d/%s/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.requestsByViewDashboardUid
-            ) +
-            tbPanelOptions.link.withTargetBlank(true)
-          )
-        ),
-      ]),
-
-    local topHttpExceptionsByView1wQuery = |||
-      round(
-        topk(10,
-          sum by (namespace, job, view) (
-            increase(
-              django_http_exceptions_total_by_view_total{
-                %(clusterLabel)s="$cluster",
-                namespace=~"$namespace",
-                job=~"$job",
-                view!~"%(djangoIgnoredViews)s",
-              }[1w]
-            ) > 0
-          )
-        )
-      )
-    ||| % $._config,
-
-    local topHttpExceptionsByView1wTable =
-      tablePanel.new(
-        'Top Exceptions by View (1w)',
-      ) +
-      tbOptions.withSortBy(
-        tbOptions.sortBy.withDisplayName('Value') +
-        tbOptions.sortBy.withDesc(true)
-      ) +
-      tbOptions.footer.withEnablePagination(true) +
-      tbStandardOptions.withUnit('short') +
-      tbQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          topHttpExceptionsByView1wQuery,
-        ) +
-        prometheus.withFormat('table') +
-        prometheus.withInstant(true),
-      ) +
-      tbQueryOptions.withTransformations([
-        tbQueryOptions.transformation.withId(
-          'organize'
-        ) +
-        tbQueryOptions.transformation.withOptions(
-          {
-            renameByName: {
-              job: 'Job',
-              namespace: 'Namespace',
-              view: 'View',
-            },
-            indexByName: {
-              namespace: 0,
-              job: 1,
-              view: 2,
-            },
-            excludeByName: {
-              Time: true,
-            },
-          }
-        ),
-      ]) +
-      tbStandardOptions.withOverrides([
-        tbOverride.byName.new('View') +
-        tbOverride.byName.withPropertiesFromOptions(
-          tbStandardOptions.withLinks(
-            tbPanelOptions.link.withTitle('Go To View') +
-            tbPanelOptions.link.withType('dashboard') +
-            tbPanelOptions.link.withUrl(
-              '/d/%s/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.requestsByViewDashboardUid
-            ) +
-            tbPanelOptions.link.withTargetBlank(true)
-          )
-        ),
-      ]),
-
-    local topHttpExceptionsByType1wQuery = |||
-      round(
-        topk(10,
-          sum by (namespace, job, type) (
-            increase(
-              django_http_exceptions_total_by_type_total{
-                %(clusterLabel)s="$cluster",
-                namespace=~"$namespace",
-                job=~"$job",
-              }[1w]
-            ) > 0
-          )
-        )
-      )
-    ||| % $._config,
-
-    local topHttpExceptionsByType1wTable =
-      tablePanel.new(
-        'Top Exceptions by Type (1w)',
-      ) +
-      tbOptions.withSortBy(
-        tbOptions.sortBy.withDisplayName('Value') +
-        tbOptions.sortBy.withDesc(true)
-      ) +
-      tbOptions.footer.withEnablePagination(true) +
-      tbStandardOptions.withUnit('short') +
-      tbQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          topHttpExceptionsByType1wQuery,
-        ) +
-        prometheus.withFormat('table') +
-        prometheus.withInstant(true),
-      ) +
-      tbQueryOptions.withTransformations([
-        tbQueryOptions.transformation.withId(
-          'organize'
-        ) +
-        tbQueryOptions.transformation.withOptions(
-          {
-            renameByName: {
-              job: 'Job',
-              namespace: 'Namespace',
-              type: 'Type',
-            },
-            indexByName: {
-              namespace: 0,
-              job: 1,
-              type: 2,
-            },
-            excludeByName: {
-              Time: true,
-            },
-          }
-        ),
-      ]),
-
-    local topResponseByView1wQuery = |||
-      round(
-        topk(10,
-          sum by (namespace, job, view) (
-            increase(
+        requestSuccessRate: |||
+          sum(
+            rate(
               django_http_responses_total_by_status_view_method_total{
-                %(clusterLabel)s="$cluster",
-                namespace=~"$namespace",
-                job=~"$job",
-                view!~"%(djangoIgnoredViews)s",
-                method=~"$method"
-              }[1w]
-            ) > 0
+                %(method)s,
+                status!~"[4-5].*"
+              }[$__rate_interval]
+            )
+          ) /
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(method)s,
+              }[$__rate_interval]
+            )
           )
-        )
-      )
-    ||| % $._config,
+        ||| % defaultFilters,
 
-    local topResponseByView1wTable =
-      tablePanel.new(
-        'Top Responses By View (1w)',
-      ) +
-      tbOptions.withSortBy(
-        tbOptions.sortBy.withDisplayName('Value') +
-        tbOptions.sortBy.withDesc(true)
-      ) +
-      tbOptions.footer.withEnablePagination(true) +
-      tbStandardOptions.withUnit('short') +
-      tbQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          topResponseByView1wQuery,
-        ) +
-        prometheus.withFormat('table') +
-        prometheus.withInstant(true),
-      ) +
-      tbQueryOptions.withTransformations([
-        tbQueryOptions.transformation.withId(
-          'organize'
-        ) +
-        tbQueryOptions.transformation.withOptions(
-          {
-            renameByName: {
-              job: 'Job',
-              namespace: 'Namespace',
-              view: 'View',
-            },
-            indexByName: {
-              namespace: 0,
-              job: 1,
-              view: 2,
-            },
-            excludeByName: {
-              Time: true,
-            },
-          }
-        ),
-      ]) +
-      tbStandardOptions.withOverrides([
-        tbOverride.byName.new('View') +
-        tbOverride.byName.withPropertiesFromOptions(
-          tbStandardOptions.withLinks(
-            tbPanelOptions.link.withTitle('Go To View') +
-            tbPanelOptions.link.withType('dashboard') +
-            tbPanelOptions.link.withUrl(
-              '/d/%s/django-requests-by-view?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.requestsByViewDashboardUid
-            ) +
-            tbPanelOptions.link.withTargetBlank(true)
+        requestBytesP95: |||
+          histogram_quantile(0.95,
+            sum (
+              rate (
+                django_http_requests_body_total_bytes_bucket {
+                  %(default)s
+                }[$__rate_interval]
+              )
+            ) by (job, le)
           )
-        ),
-      ]),
+        ||| % defaultFilters,
 
-    local topTemplates1wQuery = |||
-      topk(10,
-        round(
-          sum by (namespace, job, templatename) (
-            increase(
-              django_http_responses_total_by_templatename_total{
-                %(clusterLabel)s="$cluster",
-                namespace=~"$namespace",
-                job=~"$job",
-                templatename!~"%(djangoIgnoredTemplates)s"
-              }[1w]
-            ) > 0
+        requestLatencyP95Summary: |||
+          histogram_quantile(0.95,
+            sum (
+              irate(
+                django_http_requests_latency_seconds_by_view_method_bucket{
+                  %(view)s
+                }[$__rate_interval]
+              )
+            ) by (job, le)
           )
-        )
-      )
-    ||| % $._config,
+        ||| % defaultFilters,
 
-    local topTemplates1wTable =
-      tablePanel.new(
-        'Top Templates (1w)',
-      ) +
-      tbOptions.withSortBy(
-        tbOptions.sortBy.withDisplayName('Value') +
-        tbOptions.sortBy.withDesc(true)
-      ) +
-      tbOptions.footer.withEnablePagination(true) +
-      tbStandardOptions.withUnit('short') +
-      tbQueryOptions.withTargets(
-        prometheus.new(
-          '$datasource',
-          topTemplates1wQuery,
-        ) +
-        prometheus.withFormat('table') +
-        prometheus.withInstant(true),
-      ) +
-      tbQueryOptions.withTransformations([
-        tbQueryOptions.transformation.withId(
-          'organize'
-        ) +
-        tbQueryOptions.transformation.withOptions(
-          {
-            renameByName: {
-              job: 'Job',
-              namespace: 'Namespace',
-              templatename: 'Template Name',
+        apiResponse2xx: |||
+          round(
+            sum(
+              rate(
+                django_http_responses_total_by_status_view_method_total{
+                  %(method)s,
+                  status=~"2.*",
+                  view!~"%(adminViewRegex)s",
+                }[$__rate_interval]
+              ) > 0
+            ) by (namespace, job, view), 0.001
+          )
+        ||| % defaultFilters,
+        apiResponse4xx: std.strReplace(queries.apiResponse2xx, '2.*', '4.*'),
+        apiResponse5xx: std.strReplace(queries.apiResponse2xx, '2.*', '5.*'),
+
+        apiRequestLatencyP50: |||
+          histogram_quantile(0.50,
+            sum(
+              rate(
+                django_http_requests_latency_seconds_by_view_method_bucket{
+                  %(method)s,
+                  view!~"%(adminViewRegex)s"
+                }[1h]
+              ) > 0
+            ) by (namespace, job, view, le)
+          )
+        ||| % defaultFilters,
+        apiRequestLatencyP95: std.strReplace(queries.apiRequestLatencyP50, '0.50', '0.95'),
+        apiRequestLatencyP99: std.strReplace(queries.apiRequestLatencyP50, '0.50', '0.99'),
+
+        adminResponse2xx: std.strReplace(queries.apiResponse2xx, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
+        adminResponse4xx: std.strReplace(queries.apiResponse4xx, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
+        adminResponse5xx: std.strReplace(queries.apiResponse5xx, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
+
+        adminRequestLatencyP50: std.strReplace(queries.apiRequestLatencyP50, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
+        adminRequestLatencyP95: std.strReplace(queries.apiRequestLatencyP95, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
+        adminRequestLatencyP99: std.strReplace(queries.apiRequestLatencyP99, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
+
+        topHttpExceptionsByView1w: |||
+          round(
+            topk(10,
+              sum by (namespace, job, view) (
+                increase(
+                  django_http_exceptions_total_by_view_total{
+                    %(defaultIgnoredViews)s
+                  }[1w]
+                ) > 0
+              )
+            )
+          )
+        ||| % defaultFilters,
+
+        topHttpExceptionsByType1w: |||
+          round(
+            topk(10,
+              sum(
+                increase(
+                  django_http_exceptions_total_by_type_total{
+                    %(default)s
+                  }[1w]
+                ) > 0
+              ) by (namespace, job, type)
+            )
+          )
+        ||| % defaultFilters,
+
+        topResponseByView1w: |||
+          round(
+            topk(10,
+              sum(
+                increase(
+                  django_http_responses_total_by_status_view_method_total{
+                    %(defaultIgnoredViews)s
+                  }[1w]
+                ) > 0
+              ) by (namespace, job, view)
+            )
+          )
+        ||| % defaultFilters,
+
+        topTemplates1w: |||
+          topk(10,
+            round(
+              sum(
+                increase(
+                  django_http_responses_total_by_templatename_total{
+                    %(default)s,
+                    templatename!~"%(djangoIgnoredTemplates)s"
+                  }[1w]
+                ) > 0
+              ) by (namespace, job, templatename)
+            )
+          )
+        ||| % defaultFilters,
+      };
+
+      local panels = {
+
+        requestVolumeStat:
+          dashboardUtil.statPanel(
+            'Request Volume',
+            'reqps',
+            queries.requestVolume,
+          ),
+
+        requestSuccessRateStat:
+          dashboardUtil.statPanel(
+            'Success Rate (non 4-5xx responses)',
+            'percentunit',
+            queries.requestSuccessRate,
+            mappings=[
+              stStandardOptions.threshold.step.withValue(0.90) +
+              stStandardOptions.threshold.step.withColor('red'),
+              stStandardOptions.threshold.step.withValue(0.95) +
+              stStandardOptions.threshold.step.withColor('yellow'),
+              stStandardOptions.threshold.step.withValue(0.99) +
+              stStandardOptions.threshold.step.withColor('green'),
+            ],
+          ),
+
+        requestBytesStat:
+          dashboardUtil.statPanel(
+            'Request Body Size (P95)',
+            'decbytes',
+            queries.requestBytesP95,
+            description='95th percentile of request body size',
+            mappings=[
+              stStandardOptions.threshold.step.withValue(0.1) +
+              stStandardOptions.threshold.step.withColor('red'),
+              stStandardOptions.threshold.step.withValue(0.2) +
+              stStandardOptions.threshold.step.withColor('yellow'),
+              stStandardOptions.threshold.step.withValue(0.3) +
+              stStandardOptions.threshold.step.withColor('green'),
+            ]
+          ),
+
+        requestLatencyP95SummaryStat:
+          dashboardUtil.statPanel(
+            'Request Latency (P95)',
+            's',
+            queries.requestLatencyP95Summary,
+            description='95th percentile of request latency',
+            mappings=[
+              stStandardOptions.threshold.step.withValue(0) +
+              stStandardOptions.threshold.step.withColor('green'),
+              stStandardOptions.threshold.step.withValue(2500) +
+              stStandardOptions.threshold.step.withColor('yellow'),
+              stStandardOptions.threshold.step.withValue(5000) +
+              stStandardOptions.threshold.step.withColor('red'),
+            ],
+          ),
+
+        apiResponseTimeSeries:
+          dashboardUtil.timeSeriesPanel(
+            'API & Other Views Response Status',
+            'reqps',
+            [
+              {
+                expr: queries.apiResponse2xx,
+                legend: '{{ view }} / 2xx',
+                color: 'green',
+              },
+              {
+                expr: queries.apiResponse4xx,
+                legend: '{{ view }} / 4xx',
+                color: 'yellow',
+              },
+              {
+                expr: queries.apiResponse5xx,
+                legend: '{{ view }} / 5xx',
+                color: 'red',
+              },
+            ],
+            stack='normal',
+            description='Response status codes for API and other views (non-admin)',
+            overrides=[
+              tsOverride.byName.new('2xx') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('green')
+              ),
+              tsOverride.byName.new('4xx') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('yellow')
+              ),
+              tsOverride.byName.new('5xx') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('red')
+              ),
+            ],
+          ),
+
+        apiRequestLatencyTable:
+          dashboardUtil.tablePanel(
+            'API & Other Views Request Latency [1h]',
+            'dtdurations',
+            [
+              {
+                expr: queries.apiRequestLatencyP50,
+                legend: 'P50 Latency',
+              },
+              {
+                expr: queries.apiRequestLatencyP95,
+                legend: 'P95 Latency',
+              },
+              {
+                expr: queries.apiRequestLatencyP99,
+                legend: 'P99 Latency',
+              },
+            ],
+            sortBy={
+              name: 'P50 Latency',
+              desc: true,
             },
-            indexByName: {
-              namespace: 0,
-              job: 1,
-              templatename: 2,
+            transformations=[
+              tbQueryOptions.transformation.withId(
+                'merge'
+              ),
+              tbQueryOptions.transformation.withId(
+                'organize'
+              ) +
+              tbQueryOptions.transformation.withOptions(
+                {
+                  renameByName: {
+                    job: 'Job',
+                    namespace: 'Namespace',
+                    view: 'View',
+                    'Value #A': 'P50 Latency',
+                    'Value #B': 'P95 Latency',
+                    'Value #C': 'P99 Latency',
+                  },
+                  indexByName: {
+                    namespace: 0,
+                    job: 1,
+                    view: 2,
+                    'Value #A': 3,
+                    'Value #B': 4,
+                    'Value #C': 5,
+                  },
+                  excludeByName: {
+                    Time: true,
+                  },
+                }
+              ),
+            ],
+            overrides=[
+              tbOverride.byName.new('View') +
+              tbOverride.byName.withPropertiesFromOptions(
+                tbStandardOptions.withLinks(
+                  tbPanelOptions.link.withTitle('Go To View') +
+                  tbPanelOptions.link.withType('dashboard') +
+                  tbPanelOptions.link.withUrl(
+                    '/d/%s?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
+                  ) +
+                  tbPanelOptions.link.withTargetBlank(true)
+                )
+              ),
+            ],
+          ),
+
+        adminResponseTimeSeries:
+          dashboardUtil.timeSeriesPanel(
+            'Admin Views Response Status',
+            'reqps',
+            [
+              {
+                expr: queries.adminResponse2xx,
+                legend: '{{ view }} / 2xx',
+              },
+              {
+                expr: queries.adminResponse4xx,
+                legend: '{{ view }} / 4xx',
+              },
+              {
+                expr: queries.adminResponse5xx,
+                legend: '{{ view }} / 5xx',
+              },
+            ],
+            stack='normal',
+            description='Response status codes for admin views',
+            overrides=[
+              tsOverride.byName.new('2xx') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('green')
+              ),
+              tsOverride.byName.new('4xx') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('yellow')
+              ),
+              tsOverride.byName.new('5xx') +
+              tsOverride.byName.withPropertiesFromOptions(
+                tsStandardOptions.color.withMode('fixed') +
+                tsStandardOptions.color.withFixedColor('red')
+              ),
+            ]
+          ),
+
+        adminRequestLatencyTable:
+          dashboardUtil.tablePanel(
+            'Admin Views Request Latency [1h]',
+            'dtdurations',
+            [
+              {
+                expr: queries.adminRequestLatencyP50,
+                legend: 'P50 Latency',
+              },
+              {
+                expr: queries.adminRequestLatencyP95,
+                legend: 'P95 Latency',
+              },
+              {
+                expr: queries.adminRequestLatencyP99,
+                legend: 'P99 Latency',
+              },
+            ],
+            sortBy={
+              name: 'P50 Latency',
+              desc: true,
             },
-            excludeByName: {
-              Time: true,
+            transformations=[
+              tbQueryOptions.transformation.withId(
+                'merge'
+              ),
+              tbQueryOptions.transformation.withId(
+                'organize'
+              ) +
+              tbQueryOptions.transformation.withOptions(
+                {
+                  renameByName: {
+                    job: 'Job',
+                    namespace: 'Namespace',
+                    view: 'View',
+                    'Value #A': 'P50 Latency',
+                    'Value #B': 'P95 Latency',
+                    'Value #C': 'P99 Latency',
+                  },
+                  indexByName: {
+                    namespace: 0,
+                    job: 1,
+                    view: 2,
+                    'Value #A': 3,
+                    'Value #B': 4,
+                    'Value #C': 5,
+                  },
+                  excludeByName: {
+                    Time: true,
+                  },
+                }
+              ),
+            ],
+            overrides=[
+              tbOverride.byName.new('View') +
+              tbOverride.byName.withPropertiesFromOptions(
+                tbStandardOptions.withLinks(
+                  tbPanelOptions.link.withTitle('Go To View') +
+                  tbPanelOptions.link.withType('dashboard') +
+                  tbPanelOptions.link.withUrl(
+                    '/d/%s?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
+                  ) +
+                  tbPanelOptions.link.withTargetBlank(true)
+                )
+              ),
+            ],
+          ),
+
+        topHttpExceptionsByView1wTable:
+          dashboardUtil.tablePanel(
+            'Top Exceptions by View (1w)',
+            'short',
+            queries.topHttpExceptionsByView1w,
+            sortBy={
+              name: 'Value',
+              desc: true,
             },
-          }
-        ),
-      ]),
+            description='Top 10 views that raised exceptions in the last 7 days',
+            transformations=[
+              tbQueryOptions.transformation.withId(
+                'organize'
+              ) +
+              tbQueryOptions.transformation.withOptions(
+                {
+                  renameByName: {
+                    job: 'Job',
+                    namespace: 'Namespace',
+                    view: 'View',
+                  },
+                  indexByName: {
+                    namespace: 0,
+                    job: 1,
+                    view: 2,
+                  },
+                  excludeByName: {
+                    Time: true,
+                  },
+                }
+              ),
+            ],
+            overrides=[
+              tbOverride.byName.new('View') +
+              tbOverride.byName.withPropertiesFromOptions(
+                tbStandardOptions.withLinks(
+                  tbPanelOptions.link.withTitle('Go To View') +
+                  tbPanelOptions.link.withType('dashboard') +
+                  tbPanelOptions.link.withUrl(
+                    '/d/%s?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
+                  ) +
+                  tbPanelOptions.link.withTargetBlank(true)
+                )
+              ),
+            ]
+          ),
 
-    local summaryRow =
-      row.new(
-        title='Summary'
-      ),
+        topHttpExceptionsByType1wTable:
+          dashboardUtil.tablePanel(
+            'Top Exceptions by Type (1w)',
+            'short',
+            queries.topHttpExceptionsByType1w,
+            sortBy={
+              name: 'Value',
+              desc: true,
+            },
+            description='Top 10 exception types that were raised in the last 7 days',
+            transformations=[
+              tbQueryOptions.transformation.withId(
+                'organize'
+              ) +
+              tbQueryOptions.transformation.withOptions(
+                {
+                  renameByName: {
+                    job: 'Job',
+                    namespace: 'Namespace',
+                    type: 'Type',
+                  },
+                  indexByName: {
+                    namespace: 0,
+                    job: 1,
+                    type: 2,
+                  },
+                  excludeByName: {
+                    Time: true,
+                  },
+                }
+              ),
+            ],
+          ),
 
-    local adminViewRow =
-      row.new(
-        title='Admin Views'
-      ),
+        topResponseByView1wTable:
+          dashboardUtil.tablePanel(
+            'Top Responses by View (1w)',
+            'short',
+            queries.topResponseByView1w,
+            sortBy={
+              name: 'Value',
+              desc: true,
+            },
+            description='Top 10 views by number of responses in the last 7 days',
+            transformations=[
+              tbQueryOptions.transformation.withId(
+                'organize'
+              ) +
+              tbQueryOptions.transformation.withOptions(
+                {
+                  renameByName: {
+                    job: 'Job',
+                    namespace: 'Namespace',
+                    view: 'View',
+                  },
+                  indexByName: {
+                    namespace: 0,
+                    job: 1,
+                    view: 2,
+                  },
+                  excludeByName: {
+                    Time: true,
+                  },
+                }
+              ),
+            ],
+            overrides=[
+              tbOverride.byName.new('View') +
+              tbOverride.byName.withPropertiesFromOptions(
+                tbStandardOptions.withLinks(
+                  tbPanelOptions.link.withTitle('Go To View') +
+                  tbPanelOptions.link.withType('dashboard') +
+                  tbPanelOptions.link.withUrl(
+                    '/d/%s?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
+                  ) +
+                  tbPanelOptions.link.withTargetBlank(true)
+                )
+              ),
+            ],
+          ),
 
-    local apiViewRow =
-      row.new(
-        title='API Views & Other'
-      ),
+        topTemplates1wTable:
+          dashboardUtil.tablePanel(
+            'Top Templates (1w)',
+            'short',
+            queries.topTemplates1w,
+            description='Top 10 templates rendered in the last 7 days',
+            sortBy={
+              name: 'Value',
+              desc: true,
+            },
+            transformations=[
+              tbQueryOptions.transformation.withId(
+                'organize'
+              ) +
+              tbQueryOptions.transformation.withOptions(
+                {
+                  renameByName: {
+                    job: 'Job',
+                    namespace: 'Namespace',
+                    templatename: 'Template Name',
+                  },
+                  indexByName: {
+                    namespace: 0,
+                    job: 1,
+                    templatename: 2,
+                  },
+                  excludeByName: {
+                    Time: true,
+                  },
+                }
+              ),
+            ]
+          ),
+      };
 
-    local weeklyBreakdownRow =
-      row.new(
-        title='Weekly Breakdown',
-      ),
-
-    'django-requests-overview.json':
-      $._config.bypassDashboardValidation +
-      dashboard.new(
-        'Django / Requests / Overview',
-      ) +
-      dashboard.withDescription('A dashboard that monitors Django which focuses on giving a overview for requests. It is created using the [Django-mixin](https://github.com/adinhodovic/django-mixin).') +
-      dashboard.withUid($._config.requestsOverviewDashboardUid) +
-      dashboard.withTags($._config.tags) +
-      dashboard.withTimezone('utc') +
-      dashboard.withEditable(true) +
-      dashboard.time.withFrom('now-1h') +
-      dashboard.time.withTo('now') +
-      dashboard.withVariables(variables) +
-      dashboard.withLinks(
+      local rows =
         [
-          dashboard.link.dashboards.new('Django Dashboards', $._config.tags) +
-          dashboard.link.link.options.withTargetBlank(true) +
-          dashboard.link.link.options.withAsDropdown(true) +
-          dashboard.link.link.options.withIncludeVars(true) +
-          dashboard.link.link.options.withKeepTime(true),
-        ]
-      ) +
-      dashboard.withPanels(
-        [
-          summaryRow +
+          row.new('Summary') +
           row.gridPos.withX(0) +
           row.gridPos.withY(0) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
-        grid.makeGrid(
-          [requestVolumeStatPanel, requestSuccessRateStatPanel, requestLatencyP95SummaryStatPanel, requestBytesStatPanel],
+        grid.wrapPanels(
+          [
+            panels.requestVolumeStat,
+            panels.requestSuccessRateStat,
+            panels.requestLatencyP95SummaryStat,
+            panels.requestBytesStat,
+          ],
           panelWidth=6,
           panelHeight=4,
-          startY=1
+          startY=1,
         ) +
         [
-          apiViewRow +
+          row.new('API Views & Other') +
           row.gridPos.withX(0) +
           row.gridPos.withY(5) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
-        grid.makeGrid(
-          [apiResponseTimeSeriesPanel, apiRequestLatencyTable],
+        grid.wrapPanels(
+          [
+            panels.apiResponseTimeSeries,
+            panels.apiRequestLatencyTable,
+          ],
           panelWidth=12,
           panelHeight=10,
-          startY=6
+          startY=6,
         ) +
         [
-          adminViewRow +
+          row.new('Admin Views') +
           row.gridPos.withX(0) +
           row.gridPos.withY(16) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
-        grid.makeGrid(
-          [adminResponseTimeSeriesPanel, adminRequestLatencyTable],
+        grid.wrapPanels(
+          [
+            panels.adminResponseTimeSeries,
+            panels.adminRequestLatencyTable,
+          ],
           panelWidth=12,
           panelHeight=10,
-          startY=17
+          startY=17,
         ) +
         [
-          weeklyBreakdownRow +
+          row.new('Weekly Breakdown') +
           row.gridPos.withX(0) +
           row.gridPos.withY(26) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
-        grid.makeGrid(
-          [topHttpExceptionsByView1wTable, topHttpExceptionsByType1wTable, topResponseByView1wTable, topTemplates1wTable],
+        grid.wrapPanels(
+          [
+            panels.topHttpExceptionsByView1wTable,
+            panels.topHttpExceptionsByType1wTable,
+            panels.topResponseByView1wTable,
+            panels.topTemplates1wTable,
+          ],
           panelWidth=12,
           panelHeight=8,
-          startY=27
-        )
+          startY=27,
+        );
+
+      dashboardUtil.bypassDashboardValidation +
+      dashboard.new(
+        'Django / Requests / Overview',
       ) +
-      if $._config.annotation.enabled then
-        dashboard.withAnnotations($._config.customAnnotation)
-      else {},
+      dashboard.withDescription('A dashboard that monitors Django which focuses on giving a overview for requests. %s' % dashboardUtil.dashboardDescriptionLink) +
+      dashboard.withUid($._config.dashboardIds[dashboardName]) +
+      dashboard.withTags($._config.tags) +
+      dashboard.withTimezone('utc') +
+      dashboard.withEditable(true) +
+      dashboard.time.withFrom('now-6h') +
+      dashboard.time.withTo('now') +
+      dashboard.withVariables(variables) +
+      dashboard.withLinks(
+        dashboardUtil.dashboardLinks($._config)
+      ) +
+      dashboard.withPanels(
+        rows
+      ) +
+      dashboard.withAnnotations(
+        dashboardUtil.annotations($._config, defaultFilters)
+      ),
   },
 }

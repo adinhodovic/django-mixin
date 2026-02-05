@@ -122,15 +122,16 @@ local tbQueryOptions = table.queryOptions;
       },
 
     cluster:
-      query.new(
-        config.clusterLabel,
-        'label_values(django_http_responses_total_by_status_view_method_total{}, cluster)',
-      ) +
+      query.new('cluster') +
       query.withDatasourceFromVariable(this.datasource) +
-      query.withSort() +
+      query.queryTypes.withLabelValues(
+        config.clusterLabel,
+        'django_http_responses_total_by_status_view_method_total{}',
+      ) +
       query.generalOptions.withLabel('Cluster') +
       query.refresh.onLoad() +
       query.refresh.onTime() +
+      query.withSort() +
       (
         if config.showMultiCluster
         then query.generalOptions.showOnDashboard.withLabelAndValue()

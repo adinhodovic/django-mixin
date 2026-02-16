@@ -58,3 +58,43 @@ The `prometheus_alerts.yaml` file then need to passed to your Prometheus server,
 ## Alerts
 
 The mixin follows the [monitoring-mixins guidelines](https://github.com/monitoring-mixins/docs#guidelines-for-alert-names-labels-and-annotations) for alerts.
+
+## Configuration
+
+The mixin allows customization through a configuration object. You can customize alert thresholds, enable/disable specific alerts, and configure dashboard settings.
+
+### Alert Configuration
+
+```jsonnet
+local djangoMixin = import 'django-mixin/mixin.libsonnet';
+
+djangoMixin {
+  _config+:: {
+    // Disable all alerts
+    alerts+: {
+      enabled: false,
+    },
+    
+    // Or configure individual alerts
+    alerts+: {
+      http5xxErrorRate+: {
+        enabled: true,
+        threshold: '10',  // Percent
+        severity: 'critical',
+        interval: '5m',
+      },
+      databaseException+: {
+        enabled: false,
+      },
+    },
+    
+    // Dashboard settings
+    showMultiCluster: true,
+    clusterLabel: 'cluster',
+    datasourceName: 'Prometheus',
+    
+    // Filter ignored views in alerts and dashboards
+    djangoIgnoredViews: '<unnamed view>|health_check.*',
+  },
+}
+```

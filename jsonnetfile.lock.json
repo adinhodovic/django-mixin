@@ -4,6 +4,17 @@
     {
       "source": {
         "git": {
+          "remote": "https://github.com/adinhodovic/mixin-utils.git",
+          "subdir": ""
+        }
+      },
+      "version": "3a5d11c041310ddc04ebbc5a7202d390290a0b28",
+      "sum": "YOZGqFQQo71QiRSD9Fj32LcuLQ45a03cUbbQg6jRc/M=",
+      "name": "mm-utils"
+    },
+    {
+      "source": {
+        "git": {
           "remote": "https://github.com/grafana/grafonnet.git",
           "subdir": "gen/grafonnet-latest"
         }

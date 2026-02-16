@@ -1,3 +1,4 @@
+local mixinUtils = import 'github.com/adinhodovic/mixin-utils/utils.libsonnet';
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
 local dashboardUtil = import 'util.libsonnet';
 
@@ -157,11 +158,11 @@ local tbQueryOptions = tablePanel.queryOptions;
       local panels = {
 
         requestVolumeStat:
-          dashboardUtil.statPanel(
+          mixinUtils.dashboards.statPanel(
             'Request Volume',
             'reqps',
             queries.requestVolume,
-            'The number of requests received per second.',
+            description='The number of requests received per second.',
             steps=[
               stStandardOptions.threshold.step.withValue(0) +
               stStandardOptions.threshold.step.withColor('red'),
@@ -171,11 +172,11 @@ local tbQueryOptions = tablePanel.queryOptions;
           ),
 
         cacheHitrateStat:
-          dashboardUtil.statPanel(
+          mixinUtils.dashboards.statPanel(
             'Cache Hitrate [30m]',
             'percentunit',
             queries.cacheHitrate,
-            'The ratio of cache hits to total cache requests over the last 30 minutes. A higher hit rate indicates better cache performance.',
+            description='The ratio of cache hits to total cache requests over the last 30 minutes. A higher hit rate indicates better cache performance.',
             steps=[
               stStandardOptions.threshold.step.withValue(0) +
               stStandardOptions.threshold.step.withColor('red'),
@@ -185,11 +186,11 @@ local tbQueryOptions = tablePanel.queryOptions;
           ),
 
         dbOpsStat:
-          dashboardUtil.statPanel(
+          mixinUtils.dashboards.statPanel(
             'Database Ops',
             'ops',
             queries.dbOps,
-            'The number of database operations (queries) executed per second.',
+            description='The number of database operations (queries) executed per second.',
             steps=[
               stStandardOptions.threshold.step.withValue(0) +
               stStandardOptions.threshold.step.withColor('red'),
@@ -199,7 +200,7 @@ local tbQueryOptions = tablePanel.queryOptions;
           ),
 
         responseTimeSeries:
-          dashboardUtil.timeSeriesPanel(
+          mixinUtils.dashboards.timeSeriesPanel(
             'Responses',
             'reqps',
             [
@@ -221,33 +222,33 @@ local tbQueryOptions = tablePanel.queryOptions;
               },
             ],
             description='The number of HTTP responses sent per second, categorized by status code classes.',
-            overrides=[
-              tsOverride.byName.new('2xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('green')
-              ),
-              tsOverride.byName.new('3xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('blue')
-              ),
-              tsOverride.byName.new('4xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('yellow')
-              ),
-              tsOverride.byName.new('5xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('red')
-              ),
-            ],
             stack='percent'
-          ),
+          ) +
+          tsStandardOptions.withOverrides([
+            tsOverride.byName.new('2xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('green')
+            ),
+            tsOverride.byName.new('3xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('blue')
+            ),
+            tsOverride.byName.new('4xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('yellow')
+            ),
+            tsOverride.byName.new('5xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('red')
+            ),
+          ]),
 
         dbLatencyTimeSeries:
-          dashboardUtil.timeSeriesPanel(
+          mixinUtils.dashboards.timeSeriesPanel(
             'Database Latency',
             's',
             [
@@ -272,28 +273,28 @@ local tbQueryOptions = tablePanel.queryOptions;
           ),
 
         dbConnectionsTimeSeries:
-          dashboardUtil.timeSeriesPanel(
+          mixinUtils.dashboards.timeSeriesPanel(
             'Database Connections',
             'short',
             queries.dbConnections,
-            '{{ vendor }}',
+            legend='{{ vendor }}',
             description='The number of new database connections established, grouped by database vendor. Monitoring connection trends can help identify potential bottlenecks or capacity issues.',
           ),
 
         migrationsAppliedStat:
-          dashboardUtil.statPanel(
+          mixinUtils.dashboards.statPanel(
             'Migrations Applied',
             'short',
             queries.migrationsApplied,
-            'The total number of database migrations that have been applied.',
+            description='The total number of database migrations that have been applied.',
           ),
 
         migrationsUnAppliedStat:
-          dashboardUtil.statPanel(
+          mixinUtils.dashboards.statPanel(
             'Migrations Unapplied',
             'short',
             queries.migrationsUnapplied,
-            'The total number of database migrations that are pending and have not yet been applied.',
+            description='The total number of database migrations that are pending and have not yet been applied.',
             steps=[
               stStandardOptions.threshold.step.withValue(0) +
               stStandardOptions.threshold.step.withColor('green'),
@@ -303,7 +304,7 @@ local tbQueryOptions = tablePanel.queryOptions;
           ),
 
         topDbErrors1wTable:
-          dashboardUtil.tablePanel(
+          mixinUtils.dashboards.tablePanel(
             'Top Database Errors (1w)',
             'short',
             queries.topDbErrors1w,
@@ -337,7 +338,7 @@ local tbQueryOptions = tablePanel.queryOptions;
           ),
 
         cacheGetTimeSeries:
-          dashboardUtil.timeSeriesPanel(
+          mixinUtils.dashboards.timeSeriesPanel(
             'Cache Get Operations',
             'ops',
             [

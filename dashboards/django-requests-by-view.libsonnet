@@ -1,3 +1,4 @@
+local mixinUtils = import 'github.com/adinhodovic/mixin-utils/utils.libsonnet';
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
 local dashboardUtil = import 'util.libsonnet';
 
@@ -133,7 +134,7 @@ local tsOverride = tsStandardOptions.override;
 
       local panels = {
         requestSuccessRateStat:
-          dashboardUtil.statPanel(
+          mixinUtils.dashboards.statPanel(
             'Success Rate (non 4xx-5xx responses) [1w]',
             'percentunit',
             queries.requestSuccessRate,
@@ -149,7 +150,7 @@ local tsOverride = tsStandardOptions.override;
           ),
 
         requestHttpExceptionsStat:
-          dashboardUtil.statPanel(
+          mixinUtils.dashboards.statPanel(
             'HTTP Exceptions [1w]',
             'short',
             queries.requestHttpExceptions,
@@ -165,7 +166,7 @@ local tsOverride = tsStandardOptions.override;
           ),
 
         requestLatencyP50SummaryStat:
-          dashboardUtil.statPanel(
+          mixinUtils.dashboards.statPanel(
             'Average Request Latency (P50) [1w]',
             's',
             queries.requestLatencyP50Summary,
@@ -181,7 +182,7 @@ local tsOverride = tsStandardOptions.override;
           ),
 
         requestLatencyP95SummaryStat:
-          dashboardUtil.statPanel(
+          mixinUtils.dashboards.statPanel(
             'Average Request Latency (P95) [1w]',
             's',
             queries.requestLatencyP95Summary,
@@ -197,17 +198,17 @@ local tsOverride = tsStandardOptions.override;
           ),
 
         requestTimeSeries:
-          dashboardUtil.timeSeriesPanel(
+          mixinUtils.dashboards.timeSeriesPanel(
             'Requests',
             'reqps',
             queries.request,
-            'reqps',
+            legend='reqps',
             description='The total number of requests received by the Django application, broken down by view. This metric helps to understand the traffic patterns and load on different views within the application.',
             stack='normal'
           ),
 
         responseTimeSeries:
-          dashboardUtil.timeSeriesPanel(
+          mixinUtils.dashboards.timeSeriesPanel(
             'Responses',
             'reqps',
             [
@@ -230,42 +231,42 @@ local tsOverride = tsStandardOptions.override;
             ],
             description='The total number of responses sent by the Django application, broken down by status code class (2xx, 3xx, 4xx, 5xx). This metric helps to understand the success and failure rates of requests handled by the application.',
             stack='percent',
-            overrides=[
-              tsOverride.byName.new('2xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('green')
-              ),
-              tsOverride.byName.new('3xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('blue')
-              ),
-              tsOverride.byName.new('4xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('yellow')
-              ),
-              tsOverride.byName.new('5xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('red')
-              ),
-            ]
-          ),
+          ) +
+          tsStandardOptions.withOverrides([
+            tsOverride.byName.new('2xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('green')
+            ),
+            tsOverride.byName.new('3xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('blue')
+            ),
+            tsOverride.byName.new('4xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('yellow')
+            ),
+            tsOverride.byName.new('5xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('red')
+            ),
+          ]),
 
         responseStatusCodesTimeSeries:
-          dashboardUtil.timeSeriesPanel(
+          mixinUtils.dashboards.timeSeriesPanel(
             'Responses Status Codes',
             'reqps',
             queries.responseStatusCodes,
-            '{{ view }} / {{ status }} / {{ method }}',
+            legend='{{ view }} / {{ status }} / {{ method }}',
             description='The total number of responses sent by the Django application, broken down by status code, view, and method. This metric provides a detailed view of the response patterns for different views and methods within the application.',
             stack='normal'
           ),
 
         requestLatencyTimeSeries:
-          dashboardUtil.timeSeriesPanel(
+          mixinUtils.dashboards.timeSeriesPanel(
             'Request Latency',
             's',
             [

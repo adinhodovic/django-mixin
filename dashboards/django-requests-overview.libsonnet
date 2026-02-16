@@ -1,3 +1,4 @@
+local mixinUtils = import 'github.com/adinhodovic/mixin-utils/utils.libsonnet';
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
 local dashboardUtil = import 'util.libsonnet';
 
@@ -195,18 +196,18 @@ local tbOverride = tbStandardOptions.override;
       local panels = {
 
         requestVolumeStat:
-          dashboardUtil.statPanel(
+          mixinUtils.dashboards.statPanel(
             'Request Volume',
             'reqps',
             queries.requestVolume,
           ),
 
         requestSuccessRateStat:
-          dashboardUtil.statPanel(
+          mixinUtils.dashboards.statPanel(
             'Success Rate (non 4-5xx responses)',
             'percentunit',
             queries.requestSuccessRate,
-            mappings=[
+            steps=[
               stStandardOptions.threshold.step.withValue(0.90) +
               stStandardOptions.threshold.step.withColor('red'),
               stStandardOptions.threshold.step.withValue(0.95) +
@@ -217,12 +218,12 @@ local tbOverride = tbStandardOptions.override;
           ),
 
         requestBytesStat:
-          dashboardUtil.statPanel(
+          mixinUtils.dashboards.statPanel(
             'Request Body Size (P95)',
             'decbytes',
             queries.requestBytesP95,
             description='95th percentile of request body size',
-            mappings=[
+            steps=[
               stStandardOptions.threshold.step.withValue(0.1) +
               stStandardOptions.threshold.step.withColor('red'),
               stStandardOptions.threshold.step.withValue(0.2) +
@@ -233,12 +234,12 @@ local tbOverride = tbStandardOptions.override;
           ),
 
         requestLatencyP95SummaryStat:
-          dashboardUtil.statPanel(
+          mixinUtils.dashboards.statPanel(
             'Request Latency (P95)',
             's',
             queries.requestLatencyP95Summary,
             description='95th percentile of request latency',
-            mappings=[
+            steps=[
               stStandardOptions.threshold.step.withValue(0) +
               stStandardOptions.threshold.step.withColor('green'),
               stStandardOptions.threshold.step.withValue(2500) +
@@ -249,7 +250,7 @@ local tbOverride = tbStandardOptions.override;
           ),
 
         apiResponseTimeSeries:
-          dashboardUtil.timeSeriesPanel(
+          mixinUtils.dashboards.timeSeriesPanel(
             'API & Other Views Response Status',
             'reqps',
             [
@@ -271,27 +272,27 @@ local tbOverride = tbStandardOptions.override;
             ],
             stack='normal',
             description='Response status codes for API and other views (non-admin)',
-            overrides=[
-              tsOverride.byName.new('2xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('green')
-              ),
-              tsOverride.byName.new('4xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('yellow')
-              ),
-              tsOverride.byName.new('5xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('red')
-              ),
-            ],
-          ),
+          ) +
+          tsStandardOptions.withOverrides([
+            tsOverride.byName.new('2xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('green')
+            ),
+            tsOverride.byName.new('4xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('yellow')
+            ),
+            tsOverride.byName.new('5xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('red')
+            ),
+          ]),
 
         apiRequestLatencyTable:
-          dashboardUtil.tablePanel(
+          mixinUtils.dashboards.tablePanel(
             'API & Other Views Request Latency [1h]',
             'dtdurations',
             [
@@ -359,7 +360,7 @@ local tbOverride = tbStandardOptions.override;
           ),
 
         adminResponseTimeSeries:
-          dashboardUtil.timeSeriesPanel(
+          mixinUtils.dashboards.timeSeriesPanel(
             'Admin Views Response Status',
             'reqps',
             [
@@ -378,27 +379,27 @@ local tbOverride = tbStandardOptions.override;
             ],
             stack='normal',
             description='Response status codes for admin views',
-            overrides=[
-              tsOverride.byName.new('2xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('green')
-              ),
-              tsOverride.byName.new('4xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('yellow')
-              ),
-              tsOverride.byName.new('5xx') +
-              tsOverride.byName.withPropertiesFromOptions(
-                tsStandardOptions.color.withMode('fixed') +
-                tsStandardOptions.color.withFixedColor('red')
-              ),
-            ]
-          ),
+          ) +
+          tsStandardOptions.withOverrides([
+            tsOverride.byName.new('2xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('green')
+            ),
+            tsOverride.byName.new('4xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('yellow')
+            ),
+            tsOverride.byName.new('5xx') +
+            tsOverride.byName.withPropertiesFromOptions(
+              tsStandardOptions.color.withMode('fixed') +
+              tsStandardOptions.color.withFixedColor('red')
+            ),
+          ]),
 
         adminRequestLatencyTable:
-          dashboardUtil.tablePanel(
+          mixinUtils.dashboards.tablePanel(
             'Admin Views Request Latency [1h]',
             'dtdurations',
             [
@@ -466,7 +467,7 @@ local tbOverride = tbStandardOptions.override;
           ),
 
         topHttpExceptionsByView1wTable:
-          dashboardUtil.tablePanel(
+          mixinUtils.dashboards.tablePanel(
             'Top Exceptions by View (1w)',
             'short',
             queries.topHttpExceptionsByView1w,
@@ -513,7 +514,7 @@ local tbOverride = tbStandardOptions.override;
           ),
 
         topHttpExceptionsByType1wTable:
-          dashboardUtil.tablePanel(
+          mixinUtils.dashboards.tablePanel(
             'Top Exceptions by Type (1w)',
             'short',
             queries.topHttpExceptionsByType1w,
@@ -547,7 +548,7 @@ local tbOverride = tbStandardOptions.override;
           ),
 
         topResponseByView1wTable:
-          dashboardUtil.tablePanel(
+          mixinUtils.dashboards.tablePanel(
             'Top Responses by View (1w)',
             'short',
             queries.topResponseByView1w,
@@ -594,7 +595,7 @@ local tbOverride = tbStandardOptions.override;
           ),
 
         topTemplates1wTable:
-          dashboardUtil.tablePanel(
+          mixinUtils.dashboards.tablePanel(
             'Top Templates (1w)',
             'short',
             queries.topTemplates1w,

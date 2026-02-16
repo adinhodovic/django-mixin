@@ -19,6 +19,42 @@
     djangoIgnoredViews: '<unnamed view>|health_check:health_check_home|prometheus-django-metrics',
     djangoIgnoredTemplates: ".*'health_check/index.html'.*|None",
 
+    // Django alert configuration
+    alerts: {
+      enabled: true,
+
+      migrationsUnapplied: {
+        enabled: true,
+        severity: 'warning',
+        duration: '15m',
+        threshold: '0',  // any unapplied migrations triggers alert
+      },
+
+      databaseException: {
+        enabled: true,
+        severity: 'info',
+        interval: '10m',
+        threshold: '0',  // any exception triggers alert
+      },
+
+      http4xxErrorRate: {
+        enabled: true,
+        severity: this.django4xxSeverity,  // backward compatibility
+        interval: this.django4xxInterval,  // backward compatibility
+        threshold: this.django4xxThreshold,  // backward compatibility
+        duration: '1m',
+      },
+
+      http5xxErrorRate: {
+        enabled: true,
+        severity: this.django5xxSeverity,  // backward compatibility
+        interval: this.django5xxInterval,  // backward compatibility
+        threshold: this.django5xxThreshold,  // backward compatibility
+        duration: '1m',
+      },
+    },
+
+    // Backward compatibility: keep old alert config fields
     django4xxSeverity: 'warning',
     django4xxInterval: '5m',
     django4xxThreshold: '5',  // percent

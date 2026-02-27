@@ -66,11 +66,13 @@
       'django-overview': 'django-overview-jkwq',
       'django-requests-overview': 'django-requests-jkwq',
       'django-requests-by-view': 'django-requests-by-view-jkwq',
+      'django-model-overview': 'django-model-overview-jkwq',
     },
     dashboardUrls: {
       'django-overview': '%s/d/%s/django-overview' % [this.grafanaUrl, this.dashboardIds['django-overview']],
       'django-requests-overview': '%s/d/%s/django-requests-overview' % [this.grafanaUrl, this.dashboardIds['django-requests-overview']],
       'django-requests-by-view': '%s/d/%s/django-requests-by-view' % [this.grafanaUrl, this.dashboardIds['django-requests-by-view']],
+      'django-model-overview': '%s/d/%s/django-model-overview' % [this.grafanaUrl, this.dashboardIds['django-model-overview']],
     },
 
     // Custom annotations to display in graphs

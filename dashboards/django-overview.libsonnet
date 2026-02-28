@@ -431,7 +431,7 @@ local tbQueryOptions = tablePanel.queryOptions;
           startY=29,
         );
 
-      dashboardUtil.bypassDashboardValidation +
+      mixinUtils.dashboards.bypassDashboardValidation +
       dashboard.new(
         'Django / Overview',
       ) +

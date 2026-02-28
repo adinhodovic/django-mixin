@@ -8,9 +8,6 @@ local datasource = variable.datasource;
 local query = variable.query;
 
 {
-  // Re-export mixin-utils helpers
-  bypassDashboardValidation: mixinUtils.dashboards.bypassDashboardValidation,
-
   dashboardDescriptionLink: mixinUtils.dashboards.dashboardDescriptionLink(
     'Django-mixin',
     'https://github.com/adinhodovic/django-mixin'

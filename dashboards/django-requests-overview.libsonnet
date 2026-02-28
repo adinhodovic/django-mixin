@@ -699,7 +699,7 @@ local tbOverride = tbStandardOptions.override;
           startY=27,
         );
 
-      dashboardUtil.bypassDashboardValidation +
+      mixinUtils.dashboards.bypassDashboardValidation +
       dashboard.new(
         'Django / Requests / Overview',
       ) +

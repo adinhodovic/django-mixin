@@ -345,10 +345,10 @@ local tbQueryOptions = tablePanel.queryOptions;
           ],
           panelWidth=8,
           panelHeight=8,
-          startY=310,
+          startY=30,
         );
 
-      dashboardUtil.bypassDashboardValidation +
+      mixinUtils.dashboards.bypassDashboardValidation +
       dashboard.new(
         'Django / Models / Overview',
       ) +

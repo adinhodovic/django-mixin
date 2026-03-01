@@ -54,8 +54,8 @@
             "overrides": [ ]
          },
          "gridPos": {
-            "h": 4,
-            "w": 6,
+            "h": 3,
+            "w": 4,
             "x": 0,
             "y": 1
          },
@@ -108,9 +108,9 @@
             "overrides": [ ]
          },
          "gridPos": {
-            "h": 4,
-            "w": 6,
-            "x": 6,
+            "h": 3,
+            "w": 4,
+            "x": 4,
             "y": 1
          },
          "id": 3,
@@ -130,7 +130,61 @@
                "instant": false
             }
          ],
-         "title": "Success Rate (non 4-5xx responses)",
+         "title": "Success Rate (Including 4xx errors)",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "fieldConfig": {
+            "defaults": {
+               "mappings": [ ],
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "red",
+                        "value": 0.90000000000000002
+                     },
+                     {
+                        "color": "yellow",
+                        "value": 0.94999999999999996
+                     },
+                     {
+                        "color": "green",
+                        "value": 0.98999999999999999
+                     }
+                  ]
+               },
+               "unit": "percentunit"
+            },
+            "overrides": [ ]
+         },
+         "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 8,
+            "y": 1
+         },
+         "id": 4,
+         "options": {
+            "graphMode": "area",
+            "percentChangeColorMode": "standard",
+            "showPercentChange": false
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "sum(\n  rate(\n    django_http_responses_total_by_status_view_method_total{\n      cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n,\nview=~\"$view\",\nview!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\"\n,\nmethod=~\"$method\"\n,\n      status!~\"5.*\"\n    }[$__rate_interval]\n  )\n) /\nsum(\n  rate(\n    django_http_responses_total_by_status_view_method_total{\n      cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n,\nview=~\"$view\",\nview!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\"\n,\nmethod=~\"$method\"\n,\n    }[$__rate_interval]\n  )\n)\n",
+               "instant": false
+            }
+         ],
+         "title": "Success Rate (Excluding 4xx errors)",
          "type": "stat"
       },
       {
@@ -150,11 +204,11 @@
                      },
                      {
                         "color": "yellow",
-                        "value": 2500
+                        "value": 2.5
                      },
                      {
                         "color": "red",
-                        "value": 5000
+                        "value": 5
                      }
                   ]
                },
@@ -163,12 +217,12 @@
             "overrides": [ ]
          },
          "gridPos": {
-            "h": 4,
-            "w": 6,
+            "h": 3,
+            "w": 4,
             "x": 12,
             "y": 1
          },
-         "id": 4,
+         "id": 5,
          "options": {
             "graphMode": "area",
             "percentChangeColorMode": "standard",
@@ -218,12 +272,12 @@
             "overrides": [ ]
          },
          "gridPos": {
-            "h": 4,
-            "w": 6,
-            "x": 18,
+            "h": 3,
+            "w": 4,
+            "x": 16,
             "y": 1
          },
-         "id": 5,
+         "id": 6,
          "options": {
             "graphMode": "area",
             "percentChangeColorMode": "standard",
@@ -244,14 +298,221 @@
          "type": "stat"
       },
       {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "fieldConfig": {
+            "defaults": {
+               "mappings": [ ],
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": 1
+                     },
+                     {
+                        "color": "yellow",
+                        "value": 10
+                     },
+                     {
+                        "color": "red",
+                        "value": 50
+                     }
+                  ]
+               },
+               "unit": "short"
+            },
+            "overrides": [ ]
+         },
+         "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 20,
+            "y": 1
+         },
+         "id": 7,
+         "options": {
+            "graphMode": "area",
+            "percentChangeColorMode": "standard",
+            "showPercentChange": false
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "round(\n  sum(\n    increase(\n      django_http_exceptions_total_by_view_total{\n        cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n,\nview!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\"\n\n      }[1h]\n    )\n  ), 0.001\n)\n",
+               "instant": false
+            }
+         ],
+         "title": "HTTP Exceptions [1h]",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "Traffic split by HTTP method over the last hour.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "reqps"
+            },
+            "overrides": [ ]
+         },
+         "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 0,
+            "y": 4
+         },
+         "id": 8,
+         "options": {
+            "displayLabels": [
+               "percent"
+            ],
+            "legend": {
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "values": [
+                  "percent"
+               ]
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "sum(\n  rate(\n    django_http_requests_total_by_view_transport_method_total{\n      cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n,\nview!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\"\n\n    }[1h]\n  )\n) by (method)\n",
+               "instant": true,
+               "legendFormat": "{{ method }}"
+            }
+         ],
+         "title": "Request Distribution by Method [1h]",
+         "type": "piechart"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "Response split by 2xx/3xx/4xx/5xx over the last hour.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "reqps"
+            },
+            "overrides": [ ]
+         },
+         "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 8,
+            "y": 4
+         },
+         "id": 9,
+         "options": {
+            "displayLabels": [
+               "percent"
+            ],
+            "legend": {
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "values": [
+                  "percent"
+               ]
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "sum by (status_class) (\n  label_replace(\n    rate(\n      django_http_responses_total_by_status_view_method_total{\n        cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n,\nview=~\"$view\",\nview!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\"\n,\nmethod=~\"$method\"\n\n      }[1h]\n    ),\n    \"status_class\",\n    \"${1}xx\",\n    \"status\",\n    \"([0-9]).*\"\n  )\n)\n",
+               "instant": true,
+               "legendFormat": "{{ status_class }}"
+            }
+         ],
+         "title": "Response Distribution by Status Class [1h]",
+         "type": "piechart"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "Top 10 views by request volume over the last hour.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "reqps"
+            },
+            "overrides": [ ]
+         },
+         "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 16,
+            "y": 4
+         },
+         "id": 10,
+         "options": {
+            "displayLabels": [
+               "percent"
+            ],
+            "legend": {
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "values": [
+                  "percent"
+               ]
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "topk(10,\n  sum(\n    rate(\n      django_http_requests_total_by_view_transport_method_total{\n        cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n,\nview!~\"<unnamed view>|health_check:health_check_home|prometheus-django-metrics\"\n\n      }[1h]\n    )\n  ) by (view)\n)\n",
+               "instant": true,
+               "legendFormat": "{{ view }}"
+            }
+         ],
+         "title": "Top View Traffic Share [1h]",
+         "type": "piechart"
+      },
+      {
          "collapsed": false,
          "gridPos": {
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 5
+            "y": 9
          },
-         "id": 6,
+         "id": 11,
          "title": "API Views & Other",
          "type": "row"
       },
@@ -325,9 +586,9 @@
             "h": 10,
             "w": 12,
             "x": 0,
-            "y": 6
+            "y": 10
          },
-         "id": 7,
+         "id": 12,
          "options": {
             "legend": {
                "calcs": [
@@ -417,9 +678,9 @@
             "h": 10,
             "w": 12,
             "x": 12,
-            "y": 6
+            "y": 10
          },
-         "id": 8,
+         "id": 13,
          "options": {
             "footer": {
                "enablePagination": true
@@ -499,9 +760,9 @@
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 16
+            "y": 20
          },
-         "id": 9,
+         "id": 14,
          "title": "Admin Views",
          "type": "row"
       },
@@ -575,9 +836,9 @@
             "h": 10,
             "w": 12,
             "x": 0,
-            "y": 17
+            "y": 21
          },
-         "id": 10,
+         "id": 15,
          "options": {
             "legend": {
                "calcs": [
@@ -667,9 +928,9 @@
             "h": 10,
             "w": 12,
             "x": 12,
-            "y": 17
+            "y": 21
          },
-         "id": 11,
+         "id": 16,
          "options": {
             "footer": {
                "enablePagination": true
@@ -749,9 +1010,9 @@
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 26
+            "y": 31
          },
-         "id": 12,
+         "id": 17,
          "title": "Weekly Breakdown",
          "type": "row"
       },
@@ -795,9 +1056,9 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 27
+            "y": 32
          },
-         "id": 13,
+         "id": 18,
          "options": {
             "footer": {
                "enablePagination": true
@@ -864,9 +1125,9 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 27
+            "y": 32
          },
-         "id": 14,
+         "id": 19,
          "options": {
             "footer": {
                "enablePagination": true
@@ -953,9 +1214,9 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 35
+            "y": 40
          },
-         "id": 15,
+         "id": 20,
          "options": {
             "footer": {
                "enablePagination": true
@@ -1022,9 +1283,9 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 35
+            "y": 40
          },
-         "id": 16,
+         "id": 21,
          "options": {
             "footer": {
                "enablePagination": true

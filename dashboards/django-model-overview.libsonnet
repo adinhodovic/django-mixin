@@ -6,11 +6,7 @@ local dashboard = g.dashboard;
 local row = g.panel.row;
 local grid = g.util.grid;
 
-local statPanel = g.panel.stat;
 local tablePanel = g.panel.table;
-
-// Stat
-local stStandardOptions = statPanel.standardOptions;
 
 // Table
 local tbQueryOptions = tablePanel.queryOptions;
@@ -65,6 +61,82 @@ local tbQueryOptions = tablePanel.queryOptions;
                 }[$__rate_interval]
               )
             ) by (namespace, job), 0.001
+          )
+        ||| % defaultFilters,
+
+        operationDistribution1h: |||
+          sum by (operation) (
+            label_replace(
+              rate(
+                django_model_inserts_total{
+                  %(default)s
+                }[1h]
+              ),
+              "operation",
+              "insert",
+              "__name__",
+              ".*"
+            )
+            or
+            label_replace(
+              rate(
+                django_model_updates_total{
+                  %(default)s
+                }[1h]
+              ),
+              "operation",
+              "update",
+              "__name__",
+              ".*"
+            )
+            or
+            label_replace(
+              rate(
+                django_model_deletes_total{
+                  %(default)s
+                }[1h]
+              ),
+              "operation",
+              "delete",
+              "__name__",
+              ".*"
+            )
+          )
+        ||| % defaultFilters,
+
+        insertsByModel1h: |||
+          topk(20,
+            sum(
+              rate(
+                django_model_inserts_total{
+                  %(default)s
+                }[1h]
+              )
+            ) by (model)
+          )
+        ||| % defaultFilters,
+
+        updatesByModel1h: |||
+          topk(20,
+            sum(
+              rate(
+                django_model_updates_total{
+                  %(default)s
+                }[1h]
+              )
+            ) by (model)
+          )
+        ||| % defaultFilters,
+
+        deletesByModel1h: |||
+          topk(20,
+            sum(
+              rate(
+                django_model_deletes_total{
+                  %(default)s
+                }[1h]
+              )
+            ) by (model)
           )
         ||| % defaultFilters,
 
@@ -123,47 +195,40 @@ local tbQueryOptions = tablePanel.queryOptions;
       };
 
       local panels = {
-
-        totalInsertRateStat:
-          mixinUtils.dashboards.statPanel(
-            'Total Insert Rate',
+        operationDistribution1hPieChart:
+          mixinUtils.dashboards.pieChartPanel(
+            'Distribution by Inserts / Updates / Deletes [1h]',
             'ops',
-            queries.totalInsertRate,
-            description='The total rate of model inserts (creates) across all models per second.',
-            steps=[
-              stStandardOptions.threshold.step.withValue(0) +
-              stStandardOptions.threshold.step.withColor('red'),
-              stStandardOptions.threshold.step.withValue(0.001) +
-              stStandardOptions.threshold.step.withColor('green'),
-            ]
+            queries.operationDistribution1h,
+            '{{ operation }}',
+            description='Write operation distribution over the last hour.',
           ),
 
-        totalUpdateRateStat:
-          mixinUtils.dashboards.statPanel(
-            'Total Update Rate',
+        insertsByModel1hPieChart:
+          mixinUtils.dashboards.pieChartPanel(
+            'Inserts Distribution by Model [1h]',
             'ops',
-            queries.totalUpdateRate,
-            description='The total rate of model updates across all models per second.',
-            steps=[
-              stStandardOptions.threshold.step.withValue(0) +
-              stStandardOptions.threshold.step.withColor('red'),
-              stStandardOptions.threshold.step.withValue(0.001) +
-              stStandardOptions.threshold.step.withColor('green'),
-            ]
+            queries.insertsByModel1h,
+            '{{ model }}',
+            description='Insert rate share by model over the last hour.',
           ),
 
-        totalDeleteRateStat:
-          mixinUtils.dashboards.statPanel(
-            'Total Delete Rate',
+        updatesByModel1hPieChart:
+          mixinUtils.dashboards.pieChartPanel(
+            'Updates Distribution by Model [1h]',
             'ops',
-            queries.totalDeleteRate,
-            description='The total rate of model deletes across all models per second.',
-            steps=[
-              stStandardOptions.threshold.step.withValue(0) +
-              stStandardOptions.threshold.step.withColor('green'),
-              stStandardOptions.threshold.step.withValue(0.001) +
-              stStandardOptions.threshold.step.withColor('yellow'),
-            ]
+            queries.updatesByModel1h,
+            '{{ model }}',
+            description='Update rate share by model over the last hour.',
+          ),
+
+        deletesByModel1hPieChart:
+          mixinUtils.dashboards.pieChartPanel(
+            'Deletes Distribution by Model [1h]',
+            'ops',
+            queries.deletesByModel1h,
+            '{{ model }}',
+            description='Delete rate share by model over the last hour.',
           ),
 
         insertsByModelTimeSeries:
@@ -312,14 +377,22 @@ local tbQueryOptions = tablePanel.queryOptions;
         ] +
         grid.wrapPanels(
           [
-            panels.totalInsertRateStat,
-            panels.totalUpdateRateStat,
-            panels.totalDeleteRateStat,
+            panels.operationDistribution1hPieChart,
+            panels.insertsByModel1hPieChart,
+            panels.updatesByModel1hPieChart,
+            panels.deletesByModel1hPieChart,
           ],
-          panelWidth=8,
-          panelHeight=4,
+          panelWidth=6,
+          panelHeight=5,
           startY=1,
         ) +
+        [
+          row.new('Timelines') +
+          row.gridPos.withX(0) +
+          row.gridPos.withY(6) +
+          row.gridPos.withW(24) +
+          row.gridPos.withH(1),
+        ] +
         grid.wrapPanels(
           [
             panels.insertsByModelTimeSeries,
@@ -327,13 +400,13 @@ local tbQueryOptions = tablePanel.queryOptions;
             panels.deletesByModelTimeSeries,
           ],
           panelWidth=24,
-          panelHeight=8,
-          startY=5,
+          panelHeight=6,
+          startY=7,
         ) +
         [
           row.new('Weekly Breakdown') +
           row.gridPos.withX(0) +
-          row.gridPos.withY(29) +
+          row.gridPos.withY(25) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
@@ -345,7 +418,7 @@ local tbQueryOptions = tablePanel.queryOptions;
           ],
           panelWidth=8,
           panelHeight=8,
-          startY=30,
+          startY=26,
         );
 
       mixinUtils.dashboards.bypassDashboardValidation +

@@ -5,12 +5,9 @@ local dashboardUtil = import 'util.libsonnet';
 local dashboard = g.dashboard;
 local row = g.panel.row;
 local grid = g.util.grid;
+local query = dashboard.variable.query;
 
-local statPanel = g.panel.stat;
 local timeSeriesPanel = g.panel.timeSeries;
-
-// Stat
-local stStandardOptions = statPanel.standardOptions;
 
 // Timeseries
 local tsStandardOptions = timeSeriesPanel.standardOptions;
@@ -23,68 +20,176 @@ local tsOverride = tsStandardOptions.override;
 
       local defaultVariables = dashboardUtil.variables($._config);
 
+      local viewNoAll =
+        defaultVariables.view +
+        query.selectionOptions.withIncludeAll(false);
+
       local variables = [
         defaultVariables.datasource,
         defaultVariables.cluster,
         defaultVariables.namespace,
         defaultVariables.job,
-        defaultVariables.viewSingle,
+        viewNoAll,
         defaultVariables.method,
       ];
 
       local defaultFilters = dashboardUtil.filters($._config);
       local queries = {
-        requestSuccessRate: |||
+        requestByMethod1h: |||
+          sum(
+            rate(
+              django_http_requests_total_by_view_transport_method_total{
+                %(defaultIgnoredViews)s
+              }[1h]
+            )
+          ) by (method)
+        ||| % defaultFilters,
+
+        responseByStatusCode1h: |||
           sum(
             rate(
               django_http_responses_total_by_status_view_method_total{
-                %(methodSingle)s,
-                status!~"[4-5].*"
-              }[1w]
+                %(defaultIgnoredViews)s,
+                %(methodV)s
+              }[1h]
+            )
+          ) by (status)
+        ||| % defaultFilters,
+
+        requestByView1h: |||
+          sum(
+            rate(
+              django_http_requests_total_by_view_transport_method_total{
+                %(defaultIgnoredViews)s,
+                %(methodV)s
+              }[1h]
+            )
+          ) by (view)
+        ||| % defaultFilters,
+
+        requestTotalRaw: |||
+          round(
+            sum(
+              rate(
+                django_http_requests_total_by_view_transport_method_total{
+                  %(method)s
+                }[$__rate_interval]
+              ) > 0
+            ) by (job), 0.001
+          )
+        ||| % defaultFilters,
+
+        requestTotal: queries.requestTotalRaw,
+
+        requestTotal1hAverage: |||
+          avg_over_time(
+            (
+              sum(
+                rate(
+                  django_http_requests_total_by_view_transport_method_total{
+                    %(method)s
+                  }[$__rate_interval]
+                )
+              ) by (job)
+            )[1h:]
+          )
+        ||| % defaultFilters,
+
+        requestTotal1dAverage: |||
+          avg_over_time(
+            (
+              sum(
+                rate(
+                  django_http_requests_total_by_view_transport_method_total{
+                    %(method)s
+                  }[$__rate_interval]
+                )
+              ) by (job)
+            )[1d:]
+          )
+        ||| % defaultFilters,
+
+        requestTotalVs1hAveragePercent: |||
+          (%s / clamp_min(%s, 0.001)) * 100
+        ||| % [queries.requestTotalRaw, queries.requestTotal1hAverage],
+
+        requestTotalVs1dAveragePercent: |||
+          (%s / clamp_min(%s, 0.001)) * 100
+        ||| % [queries.requestTotalRaw, queries.requestTotal1dAverage],
+
+        requestTotal1wAgo: |||
+          round(
+            sum(
+              rate(
+                django_http_requests_total_by_view_transport_method_total{
+                  %(method)s
+                }[$__rate_interval] offset 1w
+              ) > 0
+            ) by (job), 0.001
+          )
+        ||| % defaultFilters,
+
+        requestLatencyTotalP50: |||
+          histogram_quantile(0.50,
+            sum(
+              rate(
+                django_http_requests_latency_seconds_by_view_method_bucket{
+                  %(method)s
+                }[$__rate_interval]
+              )
+            ) by (job, le)
+          )
+        ||| % defaultFilters,
+        requestLatencyTotalP95: std.strReplace(queries.requestLatencyTotalP50, '0.50', '0.95'),
+        requestLatencyTotalP99: std.strReplace(queries.requestLatencyTotalP50, '0.50', '0.99'),
+
+        requestLatencyTotalP50_1wAgo: |||
+          histogram_quantile(0.50,
+            sum(
+              rate(
+                django_http_requests_latency_seconds_by_view_method_bucket{
+                  %(method)s
+                }[$__rate_interval] offset 1w
+              )
+            ) by (job, le)
+          )
+        ||| % defaultFilters,
+        requestLatencyTotalP95_1wAgo: std.strReplace(queries.requestLatencyTotalP50_1wAgo, '0.50', '0.95'),
+        requestLatencyTotalP99_1wAgo: std.strReplace(queries.requestLatencyTotalP50_1wAgo, '0.50', '0.99'),
+
+        requestSuccessRate5xx: |||
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(method)s,
+                status!~"5.*"
+              }[$__rate_interval]
             )
           ) /
           sum(
             rate(
               django_http_responses_total_by_status_view_method_total{
-                %(methodSingle)s
-              }[1w]
+                %(method)s
+              }[$__rate_interval]
             )
           )
         ||| % defaultFilters,
 
-        requestHttpExceptions: |||
-          sum by (view) (
-            increase(
-              django_http_exceptions_total_by_view_total{
-                %(viewSingle)s
-              }[1w]
-            ) > 0
-          )
-        ||| % defaultFilters,
-
-        requestLatencyP50Summary: |||
-          histogram_quantile(0.50,
-            sum (
-              rate (
-                django_http_requests_latency_seconds_by_view_method_bucket {
-                  %(methodSingle)s
-                }[$__range]
-              )
-            ) by (job, le)
-          )
-        ||| % defaultFilters,
-
-        requestLatencyP95Summary: std.strReplace(queries.requestLatencyP50Summary, '0.50', '0.95'),
-
-        request: |||
-          round(
-            sum(
-              rate(
-                django_http_requests_total_by_view_transport_method_total{
-                  %(viewSingle)s
-                }[$__rate_interval]
-              ) > 0
-            ) by (job), 0.001
+        requestSuccessRate4xx: |||
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(method)s,
+                status!~"[4-5].*"
+              }[$__rate_interval]
+            )
+          ) /
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(method)s
+              }[$__rate_interval]
+            )
           )
         ||| % defaultFilters,
 
@@ -93,7 +198,7 @@ local tsOverride = tsStandardOptions.override;
             sum(
               rate(
                 django_http_responses_total_by_status_view_method_total{
-                  %(viewSingle)s,
+                  %(method)s,
                   status=~"2.*",
                 }[$__rate_interval]
               ) > 0
@@ -109,7 +214,7 @@ local tsOverride = tsStandardOptions.override;
             sum(
               rate(
                 django_http_responses_total_by_status_view_method_total{
-                  %(methodSingle)s
+                  %(method)s
                 }[$__rate_interval]
               ) > 0
             ) by (namespace, job, view, status, method), 0.001
@@ -121,7 +226,7 @@ local tsOverride = tsStandardOptions.override;
             sum(
               irate(
                 django_http_requests_latency_seconds_by_view_method_bucket{
-                  %(methodSingle)s
+                  %(method)s
                 }[$__rate_interval]
               ) > 0
             ) by (view, le)
@@ -129,82 +234,111 @@ local tsOverride = tsStandardOptions.override;
         ||| % defaultFilters,
         requestLatencyP95Query: std.strReplace(queries.requestLatencyP50, '0.50', '0.95'),
         requestLatencyP99Query: std.strReplace(queries.requestLatencyP50, '0.50', '0.99'),
-        requestLatencyP999Query: std.strReplace(queries.requestLatencyP50, '0.50', '0.999'),
       };
 
       local panels = {
-        requestSuccessRateStat:
-          mixinUtils.dashboards.statPanel(
-            'Success Rate (non 4xx-5xx responses) [1w]',
-            'percentunit',
-            queries.requestSuccessRate,
-            description='The percentage of successful requests (non 4xx-5xx responses) over the last week. A low success rate may indicate issues with the application or server configuration.',
-            steps=[
-              stStandardOptions.threshold.step.withValue(0.90) +
-              stStandardOptions.threshold.step.withColor('red'),
-              stStandardOptions.threshold.step.withValue(0.95) +
-              stStandardOptions.threshold.step.withColor('yellow'),
-              stStandardOptions.threshold.step.withValue(0.99) +
-              stStandardOptions.threshold.step.withColor('green'),
-            ]
-          ),
-
-        requestHttpExceptionsStat:
-          mixinUtils.dashboards.statPanel(
-            'HTTP Exceptions [1w]',
-            'short',
-            queries.requestHttpExceptions,
-            description='The total number of HTTP exceptions (5xx responses) over the last week. A high number of exceptions may indicate issues with the application or server configuration.',
-            steps=[
-              stStandardOptions.threshold.step.withValue(1) +
-              stStandardOptions.threshold.step.withColor('green'),
-              stStandardOptions.threshold.step.withValue(10) +
-              stStandardOptions.threshold.step.withColor('yellow'),
-              stStandardOptions.threshold.step.withValue(100) +
-              stStandardOptions.threshold.step.withColor('red'),
-            ],
-          ),
-
-        requestLatencyP50SummaryStat:
-          mixinUtils.dashboards.statPanel(
-            'Average Request Latency (P50) [1w]',
-            's',
-            queries.requestLatencyP50Summary,
-            description='The 50th percentile (median) of request latency over the last week. This metric indicates that 50% of requests were served in this time or less.',
-            steps=[
-              stStandardOptions.threshold.step.withValue(0) +
-              stStandardOptions.threshold.step.withColor('green'),
-              stStandardOptions.threshold.step.withValue(1000) +
-              stStandardOptions.threshold.step.withColor('yellow'),
-              stStandardOptions.threshold.step.withValue(2000) +
-              stStandardOptions.threshold.step.withColor('red'),
-            ],
-          ),
-
-        requestLatencyP95SummaryStat:
-          mixinUtils.dashboards.statPanel(
-            'Average Request Latency (P95) [1w]',
-            's',
-            queries.requestLatencyP95Summary,
-            description='The 95th percentile of request latency over the last week. This metric indicates that 95% of requests were served in this time or less.',
-            steps=[
-              stStandardOptions.threshold.step.withValue(0) +
-              stStandardOptions.threshold.step.withColor('green'),
-              stStandardOptions.threshold.step.withValue(2500) +
-              stStandardOptions.threshold.step.withColor('yellow'),
-              stStandardOptions.threshold.step.withValue(5000) +
-              stStandardOptions.threshold.step.withColor('red'),
-            ]
-          ),
-
-        requestTimeSeries:
+        requestTotalTimeSeries:
           mixinUtils.dashboards.timeSeriesPanel(
-            'Requests',
+            'Request Total',
             'reqps',
-            queries.request,
-            legend='reqps',
-            description='The total number of requests received by the Django application, broken down by view. This metric helps to understand the traffic patterns and load on different views within the application.',
+            queries.requestTotal,
+            legend='{{ job }}',
+            description='Current request rate for the selected view and method.',
             stack='normal'
+          ),
+
+        latencyTotalTimeSeries:
+          mixinUtils.dashboards.timeSeriesPanel(
+            'Latency Total',
+            's',
+            [
+              {
+                expr: queries.requestLatencyTotalP50,
+                legend: 'P50',
+              },
+              {
+                expr: queries.requestLatencyTotalP95,
+                legend: 'P95',
+              },
+              {
+                expr: queries.requestLatencyTotalP99,
+                legend: 'P99',
+                exemplar: true,
+              },
+            ],
+            description='Current request latency percentiles for the selected view and method.',
+          ),
+
+        requestTotal1wAgoTimeSeries:
+          mixinUtils.dashboards.timeSeriesPanel(
+            'Request Total (1 Week Ago)',
+            'reqps',
+            queries.requestTotal1wAgo,
+            legend='{{ job }}',
+            description='Request rate shifted by one week for baseline comparison.',
+            stack='normal'
+          ),
+
+        latencyTotal1wAgoTimeSeries:
+          mixinUtils.dashboards.timeSeriesPanel(
+            'Latency Total (1 Week Ago)',
+            's',
+            [
+              {
+                expr: queries.requestLatencyTotalP50_1wAgo,
+                legend: 'P50 (1w ago)',
+              },
+              {
+                expr: queries.requestLatencyTotalP95_1wAgo,
+                legend: 'P95 (1w ago)',
+              },
+              {
+                expr: queries.requestLatencyTotalP99_1wAgo,
+                legend: 'P99 (1w ago)',
+                exemplar: true,
+              },
+            ],
+            description='Latency percentiles shifted by one week for baseline comparison.',
+          ),
+
+        requestTotalVs1hAverageTimeSeries:
+          mixinUtils.dashboards.timeSeriesPanel(
+            'Request Rate vs 1-Hour Average',
+            'percent',
+            queries.requestTotalVs1hAveragePercent,
+            legend='{{ job }}',
+            description='Current request rate as a percentage of the trailing 1-hour average (100%% = same, 110%% = +10%%).'
+          ),
+
+        requestTotalVs1dAverageTimeSeries:
+          mixinUtils.dashboards.timeSeriesPanel(
+            'Request Rate vs 1-Day Average',
+            'percent',
+            queries.requestTotalVs1dAveragePercent,
+            legend='{{ job }}',
+            description='Current request rate as a percentage of the trailing 1-day average (100%% = same, 110%% = +10%%).'
+          ),
+
+        successRate5xxTimeSeries:
+          mixinUtils.dashboards.timeSeriesPanel(
+            'Success Rate (Excluding Client Errors 4xx)',
+            'percentunit',
+            queries.requestSuccessRate5xx,
+            legend='Success Rate',
+            description='Success rate where only 5xx are treated as failures.',
+            min=0,
+            max=1,
+          ),
+
+        successRate4xxTimeSeries:
+          mixinUtils.dashboards.timeSeriesPanel(
+            'Success Rate (Including Client Errors 4xx)',
+            'percentunit',
+            queries.requestSuccessRate4xx,
+            legend='Success Rate',
+            description='Success rate where 4xx and 5xx are treated as failures.',
+            min=0,
+            max=1,
           ),
 
         responseTimeSeries:
@@ -229,7 +363,7 @@ local tsOverride = tsStandardOptions.override;
                 legend: '5xx',
               },
             ],
-            description='The total number of responses sent by the Django application, broken down by status code class (2xx, 3xx, 4xx, 5xx). This metric helps to understand the success and failure rates of requests handled by the application.',
+            description='Response rate split by status class for the selected view.',
             stack='percent',
           ) +
           tsStandardOptions.withOverrides([
@@ -260,8 +394,8 @@ local tsOverride = tsStandardOptions.override;
             'Responses Status Codes',
             'reqps',
             queries.responseStatusCodes,
-            legend='{{ view }} / {{ status }} / {{ method }}',
-            description='The total number of responses sent by the Django application, broken down by status code, view, and method. This metric provides a detailed view of the response patterns for different views and methods within the application.',
+            legend='{{ status }} / {{ method }}',
+            description='Detailed response rate by status code and method for the selected view.',
             stack='normal'
           ),
 
@@ -272,75 +406,89 @@ local tsOverride = tsStandardOptions.override;
             [
               {
                 expr: queries.requestLatencyP50,
-                legend: '50 - {{ view }}',
+                legend: 'P50',
               },
               {
                 expr: queries.requestLatencyP95Query,
-                legend: '95 - {{ view }}',
+                legend: 'P95',
               },
               {
                 expr: queries.requestLatencyP99Query,
-                legend: '99 - {{ view }}',
-              },
-              {
-                expr: queries.requestLatencyP999Query,
-                legend: '99.9 - {{ view }}',
+                legend: 'P99',
+                exemplar: true,
               },
             ],
-            description='The request latency percentiles (50th, 95th, 99th, and 99.9th) for the Django application, broken down by view. This metric helps to understand the performance and responsiveness of different views within the application.',
+            description='Request latency percentiles for the selected view.',
+          ),
+
+        requestByMethod1hPieChart:
+          mixinUtils.dashboards.pieChartPanel(
+            'Request Distribution by Method [1h]',
+            'reqps',
+            queries.requestByMethod1h,
+            '{{ method }}',
+            description='Traffic split by HTTP method for the selected view over the last hour.',
+          ),
+
+        responseByStatusCode1hPieChart:
+          mixinUtils.dashboards.pieChartPanel(
+            'Response Distribution by Status Code [1h]',
+            'reqps',
+            queries.responseByStatusCode1h,
+            '{{ status }}',
+            description='Response split by exact status code over the last hour.',
+          ),
+
+        requestByView1hPieChart:
+          mixinUtils.dashboards.pieChartPanel(
+            'Request Distribution by View [1h]',
+            'reqps',
+            queries.requestByView1h,
+            '{{ view }}',
+            description='Traffic split by Django view over the last hour.',
           ),
       };
 
       local rows =
         [
-          row.new('Summary') +
+          row.new('Summary [1h]') +
           row.gridPos.withX(0) +
           row.gridPos.withY(0) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
-        grid.makeGrid(
+        grid.wrapPanels(
           [
-            panels.requestSuccessRateStat,
-            panels.requestHttpExceptionsStat,
-            panels.requestLatencyP50SummaryStat,
-            panels.requestLatencyP95SummaryStat,
+            panels.requestByView1hPieChart,
+            panels.requestByMethod1hPieChart,
+            panels.responseByStatusCode1hPieChart,
           ],
-          panelWidth=6,
-          panelHeight=4,
+          panelWidth=8,
+          panelHeight=5,
           startY=1
         ) +
         [
-          row.new('Request & Responses') +
+          row.new('View: $view / Method: $method') +
           row.gridPos.withX(0) +
-          row.gridPos.withY(5) +
+          row.gridPos.withY(6) +
           row.gridPos.withW(24) +
-          row.gridPos.withH(1),
+          row.gridPos.withH(1) +
+          row.withRepeat('view'),
         ] +
-        grid.makeGrid(
+        grid.wrapPanels(
           [
-            panels.requestTimeSeries,
-            panels.responseTimeSeries,
+            panels.requestTotalTimeSeries,
+            panels.latencyTotalTimeSeries,
+            panels.requestTotal1wAgoTimeSeries,
+            panels.latencyTotal1wAgoTimeSeries,
+            panels.successRate5xxTimeSeries,
+            panels.successRate4xxTimeSeries,
+            panels.requestTotalVs1dAverageTimeSeries,
+            panels.requestTotalVs1hAverageTimeSeries,
           ],
           panelWidth=12,
-          panelHeight=8,
-          startY=6
-        ) +
-        [
-          row.new('Latency & Status Codes') +
-          row.gridPos.withX(0) +
-          row.gridPos.withY(14) +
-          row.gridPos.withW(24) +
-          row.gridPos.withH(1),
-        ] +
-        grid.makeGrid(
-          [
-            panels.responseStatusCodesTimeSeries,
-            panels.requestLatencyTimeSeries,
-          ],
-          panelWidth=12,
-          panelHeight=8,
-          startY=15
+          panelHeight=6,
+          startY=7
         );
 
       mixinUtils.dashboards.bypassDashboardValidation +

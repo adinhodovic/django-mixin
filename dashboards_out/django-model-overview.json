@@ -38,37 +38,36 @@
             "type": "prometheus",
             "uid": "$datasource"
          },
-         "description": "The total rate of model inserts (creates) across all models per second.",
+         "description": "Write operation distribution over the last hour.",
          "fieldConfig": {
             "defaults": {
-               "mappings": [ ],
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "red",
-                        "value": 0
-                     },
-                     {
-                        "color": "green",
-                        "value": 0.001
-                     }
-                  ]
-               },
                "unit": "ops"
             },
             "overrides": [ ]
          },
          "gridPos": {
-            "h": 4,
-            "w": 8,
+            "h": 5,
+            "w": 6,
             "x": 0,
             "y": 1
          },
          "id": 2,
          "options": {
-            "graphMode": "area",
-            "percentChangeColorMode": "standard",
-            "showPercentChange": false
+            "displayLabels": [
+               "percent"
+            ],
+            "legend": {
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "values": [
+                  "percent"
+               ]
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -77,49 +76,49 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    rate(\n      django_model_inserts_total{\n        cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (namespace, job), 0.001\n)\n",
-               "instant": false
+               "expr": "sum by (operation) (\n  label_replace(\n    rate(\n      django_model_inserts_total{\n        cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n\n      }[1h]\n    ),\n    \"operation\",\n    \"insert\",\n    \"__name__\",\n    \".*\"\n  )\n  or\n  label_replace(\n    rate(\n      django_model_updates_total{\n        cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n\n      }[1h]\n    ),\n    \"operation\",\n    \"update\",\n    \"__name__\",\n    \".*\"\n  )\n  or\n  label_replace(\n    rate(\n      django_model_deletes_total{\n        cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n\n      }[1h]\n    ),\n    \"operation\",\n    \"delete\",\n    \"__name__\",\n    \".*\"\n  )\n)\n",
+               "instant": true,
+               "legendFormat": "{{ operation }}"
             }
          ],
-         "title": "Total Insert Rate",
-         "type": "stat"
+         "title": "Distribution by Inserts / Updates / Deletes [1h]",
+         "type": "piechart"
       },
       {
          "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
          },
-         "description": "The total rate of model updates across all models per second.",
+         "description": "Insert rate share by model over the last hour.",
          "fieldConfig": {
             "defaults": {
-               "mappings": [ ],
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "red",
-                        "value": 0
-                     },
-                     {
-                        "color": "green",
-                        "value": 0.001
-                     }
-                  ]
-               },
                "unit": "ops"
             },
             "overrides": [ ]
          },
          "gridPos": {
-            "h": 4,
-            "w": 8,
-            "x": 8,
+            "h": 5,
+            "w": 6,
+            "x": 6,
             "y": 1
          },
          "id": 3,
          "options": {
-            "graphMode": "area",
-            "percentChangeColorMode": "standard",
-            "showPercentChange": false
+            "displayLabels": [
+               "percent"
+            ],
+            "legend": {
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "values": [
+                  "percent"
+               ]
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -128,49 +127,49 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    rate(\n      django_model_updates_total{\n        cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (namespace, job), 0.001\n)\n",
-               "instant": false
+               "expr": "topk(20,\n  sum(\n    rate(\n      django_model_inserts_total{\n        cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n\n      }[1h]\n    )\n  ) by (model)\n)\n",
+               "instant": true,
+               "legendFormat": "{{ model }}"
             }
          ],
-         "title": "Total Update Rate",
-         "type": "stat"
+         "title": "Inserts Distribution by Model [1h]",
+         "type": "piechart"
       },
       {
          "datasource": {
             "type": "prometheus",
             "uid": "$datasource"
          },
-         "description": "The total rate of model deletes across all models per second.",
+         "description": "Update rate share by model over the last hour.",
          "fieldConfig": {
             "defaults": {
-               "mappings": [ ],
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": 0
-                     },
-                     {
-                        "color": "yellow",
-                        "value": 0.001
-                     }
-                  ]
-               },
                "unit": "ops"
             },
             "overrides": [ ]
          },
          "gridPos": {
-            "h": 4,
-            "w": 8,
-            "x": 16,
+            "h": 5,
+            "w": 6,
+            "x": 12,
             "y": 1
          },
          "id": 4,
          "options": {
-            "graphMode": "area",
-            "percentChangeColorMode": "standard",
-            "showPercentChange": false
+            "displayLabels": [
+               "percent"
+            ],
+            "legend": {
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "values": [
+                  "percent"
+               ]
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
          },
          "pluginVersion": "v11.4.0",
          "targets": [
@@ -179,12 +178,76 @@
                   "type": "prometheus",
                   "uid": "$datasource"
                },
-               "expr": "round(\n  sum(\n    rate(\n      django_model_deletes_total{\n        cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (namespace, job), 0.001\n)\n",
-               "instant": false
+               "expr": "topk(20,\n  sum(\n    rate(\n      django_model_updates_total{\n        cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n\n      }[1h]\n    )\n  ) by (model)\n)\n",
+               "instant": true,
+               "legendFormat": "{{ model }}"
             }
          ],
-         "title": "Total Delete Rate",
-         "type": "stat"
+         "title": "Updates Distribution by Model [1h]",
+         "type": "piechart"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "$datasource"
+         },
+         "description": "Delete rate share by model over the last hour.",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "ops"
+            },
+            "overrides": [ ]
+         },
+         "gridPos": {
+            "h": 5,
+            "w": 6,
+            "x": 18,
+            "y": 1
+         },
+         "id": 5,
+         "options": {
+            "displayLabels": [
+               "percent"
+            ],
+            "legend": {
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "values": [
+                  "percent"
+               ]
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "$datasource"
+               },
+               "expr": "topk(20,\n  sum(\n    rate(\n      django_model_deletes_total{\n        cluster=\"$cluster\",\nnamespace=\"$namespace\",\njob=~\"$job\"\n\n      }[1h]\n    )\n  ) by (model)\n)\n",
+               "instant": true,
+               "legendFormat": "{{ model }}"
+            }
+         ],
+         "title": "Deletes Distribution by Model [1h]",
+         "type": "piechart"
+      },
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 6
+         },
+         "id": 6,
+         "title": "Timelines",
+         "type": "row"
       },
       {
          "datasource": {
@@ -207,12 +270,12 @@
             "overrides": [ ]
          },
          "gridPos": {
-            "h": 8,
+            "h": 6,
             "w": 24,
             "x": 0,
-            "y": 5
+            "y": 7
          },
-         "id": 5,
+         "id": 7,
          "options": {
             "legend": {
                "calcs": [
@@ -266,12 +329,12 @@
             "overrides": [ ]
          },
          "gridPos": {
-            "h": 8,
+            "h": 6,
             "w": 24,
             "x": 0,
             "y": 13
          },
-         "id": 6,
+         "id": 8,
          "options": {
             "legend": {
                "calcs": [
@@ -325,12 +388,12 @@
             "overrides": [ ]
          },
          "gridPos": {
-            "h": 8,
+            "h": 6,
             "w": 24,
             "x": 0,
-            "y": 21
+            "y": 19
          },
-         "id": 7,
+         "id": 9,
          "options": {
             "legend": {
                "calcs": [
@@ -369,9 +432,9 @@
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 29
+            "y": 25
          },
-         "id": 8,
+         "id": 10,
          "title": "Weekly Breakdown",
          "type": "row"
       },
@@ -395,9 +458,9 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 30
+            "y": 26
          },
-         "id": 9,
+         "id": 11,
          "options": {
             "footer": {
                "enablePagination": true
@@ -465,9 +528,9 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 30
+            "y": 26
          },
-         "id": 10,
+         "id": 12,
          "options": {
             "footer": {
                "enablePagination": true
@@ -535,9 +598,9 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 30
+            "y": 26
          },
-         "id": 11,
+         "id": 13,
          "options": {
             "footer": {
                "enablePagination": true

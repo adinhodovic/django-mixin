@@ -72,6 +72,24 @@ local tbOverride = tbStandardOptions.override;
           )
         ||| % defaultFilters,
 
+        requestSuccessRateExcluding4xx: |||
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(method)s,
+                status!~"5.*"
+              }[$__rate_interval]
+            )
+          ) /
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(method)s,
+              }[$__rate_interval]
+            )
+          )
+        ||| % defaultFilters,
+
         requestBytesP95: |||
           histogram_quantile(0.95,
             sum (
@@ -93,6 +111,56 @@ local tbOverride = tbStandardOptions.override;
                 }[$__rate_interval]
               )
             ) by (job, le)
+          )
+        ||| % defaultFilters,
+
+        requestHttpExceptions1h: |||
+          round(
+            sum(
+              increase(
+                django_http_exceptions_total_by_view_total{
+                  %(defaultIgnoredViews)s
+                }[1h]
+              )
+            ), 0.001
+          )
+        ||| % defaultFilters,
+
+        requestByMethod1h: |||
+          sum(
+            rate(
+              django_http_requests_total_by_view_transport_method_total{
+                %(defaultIgnoredViews)s
+              }[1h]
+            )
+          ) by (method)
+        ||| % defaultFilters,
+
+        responseByStatusClass1h: |||
+          sum by (status_class) (
+            label_replace(
+              rate(
+                django_http_responses_total_by_status_view_method_total{
+                  %(method)s
+                }[1h]
+              ),
+              "status_class",
+              "${1}xx",
+              "status",
+              "([0-9]).*"
+            )
+          )
+        ||| % defaultFilters,
+
+        requestByView1h: |||
+          topk(10,
+            sum(
+              rate(
+                django_http_requests_total_by_view_transport_method_total{
+                  %(defaultIgnoredViews)s
+                }[1h]
+              )
+            ) by (view)
           )
         ||| % defaultFilters,
 
@@ -204,9 +272,24 @@ local tbOverride = tbStandardOptions.override;
 
         requestSuccessRateStat:
           mixinUtils.dashboards.statPanel(
-            'Success Rate (non 4-5xx responses)',
+            'Success Rate (Including 4xx errors)',
             'percentunit',
             queries.requestSuccessRate,
+            steps=[
+              stStandardOptions.threshold.step.withValue(0.90) +
+              stStandardOptions.threshold.step.withColor('red'),
+              stStandardOptions.threshold.step.withValue(0.95) +
+              stStandardOptions.threshold.step.withColor('yellow'),
+              stStandardOptions.threshold.step.withValue(0.99) +
+              stStandardOptions.threshold.step.withColor('green'),
+            ],
+          ),
+
+        requestSuccessRateExcluding4xxStat:
+          mixinUtils.dashboards.statPanel(
+            'Success Rate (Excluding 4xx errors)',
+            'percentunit',
+            queries.requestSuccessRateExcluding4xx,
             steps=[
               stStandardOptions.threshold.step.withValue(0.90) +
               stStandardOptions.threshold.step.withColor('red'),
@@ -242,11 +325,53 @@ local tbOverride = tbStandardOptions.override;
             steps=[
               stStandardOptions.threshold.step.withValue(0) +
               stStandardOptions.threshold.step.withColor('green'),
-              stStandardOptions.threshold.step.withValue(2500) +
+              stStandardOptions.threshold.step.withValue(2.5) +
               stStandardOptions.threshold.step.withColor('yellow'),
-              stStandardOptions.threshold.step.withValue(5000) +
+              stStandardOptions.threshold.step.withValue(5) +
               stStandardOptions.threshold.step.withColor('red'),
             ],
+          ),
+
+        requestHttpExceptions1hStat:
+          mixinUtils.dashboards.statPanel(
+            'HTTP Exceptions [1h]',
+            'short',
+            queries.requestHttpExceptions1h,
+            steps=[
+              stStandardOptions.threshold.step.withValue(1) +
+              stStandardOptions.threshold.step.withColor('green'),
+              stStandardOptions.threshold.step.withValue(10) +
+              stStandardOptions.threshold.step.withColor('yellow'),
+              stStandardOptions.threshold.step.withValue(50) +
+              stStandardOptions.threshold.step.withColor('red'),
+            ],
+          ),
+
+        requestByMethod1hPieChart:
+          mixinUtils.dashboards.pieChartPanel(
+            'Request Distribution by Method [1h]',
+            'reqps',
+            queries.requestByMethod1h,
+            '{{ method }}',
+            description='Traffic split by HTTP method over the last hour.',
+          ),
+
+        responseByStatusClass1hPieChart:
+          mixinUtils.dashboards.pieChartPanel(
+            'Response Distribution by Status Class [1h]',
+            'reqps',
+            queries.responseByStatusClass1h,
+            '{{ status_class }}',
+            description='Response split by 2xx/3xx/4xx/5xx over the last hour.',
+          ),
+
+        requestByView1hPieChart:
+          mixinUtils.dashboards.pieChartPanel(
+            'Top View Traffic Share [1h]',
+            'reqps',
+            queries.requestByView1h,
+            '{{ view }}',
+            description='Top 10 views by request volume over the last hour.',
           ),
 
         apiResponseTimeSeries:
@@ -641,17 +766,29 @@ local tbOverride = tbStandardOptions.override;
           [
             panels.requestVolumeStat,
             panels.requestSuccessRateStat,
+            panels.requestSuccessRateExcluding4xxStat,
             panels.requestLatencyP95SummaryStat,
             panels.requestBytesStat,
+            panels.requestHttpExceptions1hStat,
           ],
-          panelWidth=6,
-          panelHeight=4,
+          panelWidth=4,
+          panelHeight=3,
           startY=1,
+        ) +
+        grid.wrapPanels(
+          [
+            panels.requestByMethod1hPieChart,
+            panels.responseByStatusClass1hPieChart,
+            panels.requestByView1hPieChart,
+          ],
+          panelWidth=8,
+          panelHeight=5,
+          startY=4,
         ) +
         [
           row.new('API Views & Other') +
           row.gridPos.withX(0) +
-          row.gridPos.withY(5) +
+          row.gridPos.withY(9) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
@@ -662,12 +799,12 @@ local tbOverride = tbStandardOptions.override;
           ],
           panelWidth=12,
           panelHeight=10,
-          startY=6,
+          startY=10,
         ) +
         [
           row.new('Admin Views') +
           row.gridPos.withX(0) +
-          row.gridPos.withY(16) +
+          row.gridPos.withY(20) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
@@ -678,12 +815,12 @@ local tbOverride = tbStandardOptions.override;
           ],
           panelWidth=12,
           panelHeight=10,
-          startY=17,
+          startY=21,
         ) +
         [
           row.new('Weekly Breakdown') +
           row.gridPos.withX(0) +
-          row.gridPos.withY(26) +
+          row.gridPos.withY(31) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
@@ -696,7 +833,7 @@ local tbOverride = tbStandardOptions.override;
           ],
           panelWidth=12,
           panelHeight=8,
-          startY=27,
+          startY=32,
         );
 
       mixinUtils.dashboards.bypassDashboardValidation +

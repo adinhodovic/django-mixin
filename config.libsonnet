@@ -16,7 +16,7 @@
     tags: ['django', 'django-mixin'],
 
     adminViewRegex: 'admin.*',
-    djangoIgnoredViews: '<unnamed view>|health_check:health_check_home|prometheus-django-metrics',
+    djangoIgnoredViews: '<unnamed view>|health_check.views.HealthCheckView|prometheus-django-metrics',
     djangoIgnoredTemplates: ".*'health_check/index.html'.*|None",
 
     // Django alert configuration

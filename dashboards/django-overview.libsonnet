@@ -48,6 +48,108 @@ local tbQueryOptions = tablePanel.queryOptions;
           )
         ||| % defaultFilters,
 
+        requestSuccessRateExcluding5xx: |||
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(defaultIgnoredViews)s,
+                status!~"5.*"
+              }[$__rate_interval]
+            )
+          )
+          /
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(defaultIgnoredViews)s
+              }[$__rate_interval]
+            )
+          )
+        ||| % defaultFilters,
+
+        requestSuccessRateIncluding4xx: |||
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(defaultIgnoredViews)s,
+                status!~"[4-5].*"
+              }[$__rate_interval]
+            )
+          )
+          /
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(defaultIgnoredViews)s
+              }[$__rate_interval]
+            )
+          )
+        ||| % defaultFilters,
+
+        requestLatencyP50: |||
+          histogram_quantile(0.50,
+            sum(
+              rate(
+                django_http_requests_latency_seconds_by_view_method_bucket{
+                  %(defaultIgnoredViews)s
+                }[$__rate_interval]
+              )
+            ) by (le)
+          )
+        ||| % defaultFilters,
+        requestLatencyP95: std.strReplace(queries.requestLatencyP50, '0.50', '0.95'),
+        requestLatencyP99: std.strReplace(queries.requestLatencyP50, '0.50', '0.99'),
+
+        requestHttpExceptions1h: |||
+          round(
+            sum(
+              increase(
+                django_http_exceptions_total_by_view_total{
+                  %(defaultIgnoredViews)s
+                }[1h]
+              )
+            ), 0.001
+          )
+        ||| % defaultFilters,
+
+        requestByMethod1h: |||
+          sum(
+            rate(
+              django_http_requests_total_by_view_transport_method_total{
+                %(defaultIgnoredViews)s
+              }[1h]
+            )
+          ) by (method)
+        ||| % defaultFilters,
+
+        responseByStatusClass1h: |||
+          sum by (status_class) (
+            label_replace(
+              rate(
+                django_http_responses_total_by_status_view_method_total{
+                  %(defaultIgnoredViews)s
+                }[1h]
+              ),
+              "status_class",
+              "${1}xx",
+              "status",
+              "([0-9]).*"
+            )
+          )
+        ||| % defaultFilters,
+
+        requestByView1h: |||
+          topk(10,
+            sum(
+              rate(
+                django_http_requests_total_by_view_transport_method_total{
+                  %(defaultIgnoredViews)s
+                }[1h]
+              )
+            ) by (view)
+          )
+        ||| % defaultFilters,
+
         cacheHitrate: |||
           sum (
             rate (
@@ -77,6 +179,26 @@ local tbQueryOptions = tablePanel.queryOptions;
           ) by (namespace, job)
         ||| % defaultFilters,
 
+        dbOpsByVendor1h: |||
+          sum(
+            rate(
+              django_db_execute_total{
+                %(default)s
+              }[$__rate_interval]
+            )
+          ) by (namespace, job, vendor)
+        ||| % defaultFilters,
+
+        dbNewConnectionErrors: |||
+          sum(
+            rate(
+              django_db_new_connection_errors_total{
+                %(default)s
+              }[$__rate_interval]
+            )
+          ) by (namespace, job, vendor)
+        ||| % defaultFilters,
+
         response2xx: |||
           round(
             sum(
@@ -96,26 +218,25 @@ local tbQueryOptions = tablePanel.queryOptions;
         dbLatencyP50: |||
           histogram_quantile(0.50,
             sum(
-              irate(
+              rate(
                 django_db_query_duration_seconds_bucket{
                   %(default)s
                 }[$__rate_interval]
-              ) > 0
+              )
             ) by (vendor, namespace, job, le)
           )
         ||| % defaultFilters,
         dbLatencyP95: std.strReplace(queries.dbLatencyP50, '0.50', '0.95'),
         dbLatencyP99: std.strReplace(queries.dbLatencyP50, '0.50', '0.99'),
-        dbLatencyP999: std.strReplace(queries.dbLatencyP50, '0.50', '0.999'),
 
         dbConnections: |||
           round(
             sum(
-              increase(
+              rate(
                 django_db_new_connections_total{
                   %(default)s
                 }[$__rate_interval]
-              ) > 0
+              )
             ) by (namespace, job, vendor)
           )
         ||| % defaultFilters,
@@ -137,8 +258,8 @@ local tbQueryOptions = tablePanel.queryOptions;
                   django_db_errors_total{
                     %(default)s
                   }[1w]
-                ) > 0
-              ) by (type)
+                )
+              ) by (namespace, job, type)
             )
           )
         ||| % defaultFilters,
@@ -149,10 +270,28 @@ local tbQueryOptions = tablePanel.queryOptions;
               django_cache_get_hits_total{
                 %(default)s
               }[$__rate_interval]
-            ) > 0
+            )
           ) by (namespace, job, backend)
         ||| % defaultFilters,
         cacheGetMisses: std.strReplace(queries.cacheGetHits, 'django_cache_get_hits_total', 'django_cache_get_misses_total'),
+        cacheGetFailures: std.strReplace(queries.cacheGetHits, 'django_cache_get_hits_total', 'django_cache_get_fail_total'),
+        cacheHitRateByBackend: |||
+          sum(
+            rate(
+              django_cache_get_hits_total{
+                %(default)s
+              }[$__rate_interval]
+            )
+          ) by (namespace, job, backend)
+          /
+          sum(
+            rate(
+              django_cache_get_total{
+                %(default)s
+              }[$__rate_interval]
+            )
+          ) by (namespace, job, backend)
+        ||| % defaultFilters,
       };
 
       local panels = {
@@ -182,6 +321,70 @@ local tbQueryOptions = tablePanel.queryOptions;
               stStandardOptions.threshold.step.withColor('red'),
               stStandardOptions.threshold.step.withValue(0.1) +
               stStandardOptions.threshold.step.withColor('green'),
+            ],
+          ),
+
+        requestSuccessRateExcluding5xxStat:
+          mixinUtils.dashboards.statPanel(
+            'Success Rate (Excluding 4xx)',
+            'percentunit',
+            queries.requestSuccessRateExcluding5xx,
+            description='Request success rate that treats client-side 4xx responses as successful. Drops usually point to Django, dependency, or infrastructure failures.',
+            steps=[
+              stStandardOptions.threshold.step.withValue(0.90) +
+              stStandardOptions.threshold.step.withColor('red'),
+              stStandardOptions.threshold.step.withValue(0.95) +
+              stStandardOptions.threshold.step.withColor('yellow'),
+              stStandardOptions.threshold.step.withValue(0.99) +
+              stStandardOptions.threshold.step.withColor('green'),
+            ],
+          ),
+
+        requestSuccessRateIncluding4xxStat:
+          mixinUtils.dashboards.statPanel(
+            'Success Rate (Including 4xx)',
+            'percentunit',
+            queries.requestSuccessRateIncluding4xx,
+            description='Strict request success rate that counts both 4xx and 5xx responses as failures. Use this as an end-user health signal.',
+            steps=[
+              stStandardOptions.threshold.step.withValue(0.90) +
+              stStandardOptions.threshold.step.withColor('red'),
+              stStandardOptions.threshold.step.withValue(0.95) +
+              stStandardOptions.threshold.step.withColor('yellow'),
+              stStandardOptions.threshold.step.withValue(0.99) +
+              stStandardOptions.threshold.step.withColor('green'),
+            ],
+          ),
+
+        requestLatencyP95Stat:
+          mixinUtils.dashboards.statPanel(
+            'Request Latency (P95)',
+            's',
+            queries.requestLatencyP95,
+            description='95th percentile Django request latency across the selected namespace and job.',
+            steps=[
+              stStandardOptions.threshold.step.withValue(0) +
+              stStandardOptions.threshold.step.withColor('green'),
+              stStandardOptions.threshold.step.withValue(1) +
+              stStandardOptions.threshold.step.withColor('yellow'),
+              stStandardOptions.threshold.step.withValue(3) +
+              stStandardOptions.threshold.step.withColor('red'),
+            ],
+          ),
+
+        requestHttpExceptions1hStat:
+          mixinUtils.dashboards.statPanel(
+            'HTTP Exceptions [1h]',
+            'short',
+            queries.requestHttpExceptions1h,
+            description='Total Django HTTP exceptions over the last hour. Non-zero values indicate views raising exceptions before normal response handling.',
+            steps=[
+              stStandardOptions.threshold.step.withValue(0) +
+              stStandardOptions.threshold.step.withColor('green'),
+              stStandardOptions.threshold.step.withValue(1) +
+              stStandardOptions.threshold.step.withColor('yellow'),
+              stStandardOptions.threshold.step.withValue(10) +
+              stStandardOptions.threshold.step.withColor('red'),
             ],
           ),
 
@@ -247,6 +450,55 @@ local tbQueryOptions = tablePanel.queryOptions;
             ),
           ]),
 
+        requestLatencyTimeSeries:
+          mixinUtils.dashboards.timeSeriesPanel(
+            'Request Latency',
+            's',
+            [
+              {
+                expr: queries.requestLatencyP50,
+                legend: 'P50',
+              },
+              {
+                expr: queries.requestLatencyP95,
+                legend: 'P95',
+              },
+              {
+                expr: queries.requestLatencyP99,
+                legend: 'P99',
+                exemplar: true,
+              },
+            ],
+            description='Django request latency percentiles. Watch P95/P99 for slow views or dependency bottlenecks that are hidden by median latency.',
+          ),
+
+        requestByMethod1hPieChart:
+          mixinUtils.dashboards.pieChartPanel(
+            'Request Distribution by Method [1h]',
+            'reqps',
+            queries.requestByMethod1h,
+            '{{ method }}',
+            description='Traffic split by HTTP method over the last hour. Unexpected method mix changes can indicate client or routing changes.',
+          ),
+
+        responseByStatusClass1hPieChart:
+          mixinUtils.dashboards.pieChartPanel(
+            'Response Distribution by Status Class [1h]',
+            'reqps',
+            queries.responseByStatusClass1h,
+            '{{ status_class }}',
+            description='Response split by status code class over the last hour. Use this to quickly spot elevated 4xx or 5xx traffic.',
+          ),
+
+        requestByView1hPieChart:
+          mixinUtils.dashboards.pieChartPanel(
+            'Top View Traffic Share [1h]',
+            'reqps',
+            queries.requestByView1h,
+            '{{ view }}',
+            description='Top Django views by request volume over the last hour.',
+          ),
+
         dbLatencyTimeSeries:
           mixinUtils.dashboards.timeSeriesPanel(
             'Database Latency',
@@ -263,10 +515,6 @@ local tbQueryOptions = tablePanel.queryOptions;
               {
                 expr: queries.dbLatencyP99,
                 legend: '99 - {{ vendor }}',
-              },
-              {
-                expr: queries.dbLatencyP999,
-                legend: '99.9 - {{ vendor }}',
               },
             ],
             description='The latency of database queries at various percentiles, grouped by database vendor. This helps identify performance issues and outliers in database response times.',
@@ -337,9 +585,29 @@ local tbQueryOptions = tablePanel.queryOptions;
             ]
           ),
 
+        dbOpsTimeSeries:
+          mixinUtils.dashboards.timeSeriesPanel(
+            'Database Operations',
+            'ops',
+            queries.dbOpsByVendor1h,
+            '{{ vendor }}',
+            description='Database query operation rate by vendor. Use this with latency and connection panels to spot load-driven database regressions.',
+            stack='normal'
+          ),
+
+        dbNewConnectionErrorsTimeSeries:
+          mixinUtils.dashboards.timeSeriesPanel(
+            'Database New Connection Errors',
+            'ops',
+            queries.dbNewConnectionErrors,
+            '{{ vendor }}',
+            description='Rate of failed database connection attempts by vendor. Non-zero values usually indicate database availability, credentials, network, or pool exhaustion issues.',
+            stack='normal'
+          ),
+
         cacheGetTimeSeries:
           mixinUtils.dashboards.timeSeriesPanel(
-            'Cache Get Operations',
+            'Cache Operations',
             'ops',
             [
               {
@@ -350,9 +618,24 @@ local tbQueryOptions = tablePanel.queryOptions;
                 expr: queries.cacheGetMisses,
                 legend: 'Miss - {{ backend }}',
               },
+              {
+                expr: queries.cacheGetFailures,
+                legend: 'Fail - {{ backend }}',
+              },
             ],
-            description='The number of cache get operations, categorized by hits and misses, grouped by cache backend. This helps assess cache performance and effectiveness.',
-            stack='percent'
+            description='Cache get operation rate by backend, split into hits, misses, and failures. Rising misses can explain increased database load; failures indicate cache backend or client errors.',
+            stack='normal'
+          ),
+
+        cacheHitRateTimeSeries:
+          mixinUtils.dashboards.timeSeriesPanel(
+            'Cache Hit Rate',
+            'percentunit',
+            queries.cacheHitRateByBackend,
+            '{{ backend }}',
+            description='Cache hit rate by backend. Lower values mean more cache lookups are falling through to downstream work such as database queries.',
+            min=0,
+            max=1
           ),
       };
 
@@ -367,25 +650,46 @@ local tbQueryOptions = tablePanel.queryOptions;
         grid.wrapPanels(
           [
             panels.requestVolumeStat,
+            panels.requestSuccessRateExcluding5xxStat,
+            panels.requestSuccessRateIncluding4xxStat,
+            panels.requestLatencyP95Stat,
             panels.dbOpsStat,
             panels.cacheHitrateStat,
           ],
-          panelWidth=8,
-          panelHeight=4,
+          panelWidth=4,
+          panelHeight=3,
           startY=1,
         ) +
         grid.wrapPanels(
           [
-            panels.responseTimeSeries,
+            panels.requestByMethod1hPieChart,
+            panels.responseByStatusClass1hPieChart,
+            panels.requestByView1hPieChart,
           ],
-          panelWidth=24,
+          panelWidth=8,
           panelHeight=6,
-          startY=5,
+          startY=4,
+        ) +
+        [
+          row.new('Requests') +
+          row.gridPos.withX(0) +
+          row.gridPos.withY(10) +
+          row.gridPos.withW(24) +
+          row.gridPos.withH(1),
+        ] +
+        grid.wrapPanels(
+          [
+            panels.responseTimeSeries,
+            panels.requestLatencyTimeSeries,
+          ],
+          panelWidth=12,
+          panelHeight=8,
+          startY=11,
         ) +
         [
           row.new('Database') +
           row.gridPos.withX(0) +
-          row.gridPos.withY(11) +
+          row.gridPos.withY(19) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
@@ -396,7 +700,7 @@ local tbQueryOptions = tablePanel.queryOptions;
           ],
           panelWidth=12,
           panelHeight=3,
-          startY=12,
+          startY=20,
         ) +
         grid.wrapPanels(
           [
@@ -404,8 +708,17 @@ local tbQueryOptions = tablePanel.queryOptions;
             panels.dbLatencyTimeSeries,
           ],
           panelWidth=12,
-          panelHeight=5,
-          startY=15,
+          panelHeight=8,
+          startY=23,
+        ) +
+        grid.wrapPanels(
+          [
+            panels.dbOpsTimeSeries,
+            panels.dbNewConnectionErrorsTimeSeries,
+          ],
+          panelWidth=12,
+          panelHeight=8,
+          startY=31,
         ) +
         grid.wrapPanels(
           [
@@ -413,29 +726,30 @@ local tbQueryOptions = tablePanel.queryOptions;
           ],
           panelWidth=24,
           panelHeight=8,
-          startY=20,
+          startY=39,
         ) +
         [
           row.new('Cache') +
           row.gridPos.withX(0) +
-          row.gridPos.withY(28) +
+          row.gridPos.withY(47) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
         grid.wrapPanels(
           [
             panels.cacheGetTimeSeries,
+            panels.cacheHitRateTimeSeries,
           ],
-          panelWidth=24,
-          panelHeight=6,
-          startY=29,
+          panelWidth=12,
+          panelHeight=8,
+          startY=48,
         );
 
       mixinUtils.dashboards.bypassDashboardValidation +
       dashboard.new(
         'Django / Overview',
       ) +
-      dashboard.withDescription('A dashboard that monitors Django which focuses on giving a overview for the system (requests, db, cache). %s' % dashboardUtil.dashboardDescriptionLink) +
+      dashboard.withDescription('A landing dashboard for Django services with request health, latency, database activity, cache effectiveness, and drill-down links into high-traffic views. Use it to spot application-wide regressions before moving into the request, view, or model dashboards. %s' % dashboardUtil.dashboardDescriptionLink) +
       dashboard.withUid($._config.dashboardIds[dashboardName]) +
       dashboard.withTags($._config.tags) +
       dashboard.withTimezone('utc') +

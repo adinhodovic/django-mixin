@@ -102,10 +102,10 @@ local tbOverride = tbStandardOptions.override;
           )
         ||| % defaultFilters,
 
-        requestLatencyP95Summary: |||
-          histogram_quantile(0.95,
+        requestLatencyP50Summary: |||
+          histogram_quantile(0.50,
             sum (
-              irate(
+              rate(
                 django_http_requests_latency_seconds_by_view_method_bucket{
                   %(view)s
                 }[$__rate_interval]
@@ -113,6 +113,8 @@ local tbOverride = tbStandardOptions.override;
             ) by (job, le)
           )
         ||| % defaultFilters,
+        requestLatencyP95Summary: std.strReplace(queries.requestLatencyP50Summary, '0.50', '0.95'),
+        requestLatencyP99Summary: std.strReplace(queries.requestLatencyP50Summary, '0.50', '0.99'),
 
         requestHttpExceptions1h: |||
           round(
@@ -131,7 +133,7 @@ local tbOverride = tbStandardOptions.override;
             rate(
               django_http_requests_total_by_view_transport_method_total{
                 %(defaultIgnoredViews)s
-              }[1h]
+              }[$__rate_interval]
             )
           ) by (method)
         ||| % defaultFilters,
@@ -151,6 +153,8 @@ local tbOverride = tbStandardOptions.override;
             )
           )
         ||| % defaultFilters,
+
+        responseByStatusClass: std.strReplace(queries.responseByStatusClass1h, '[1h]', '[$__rate_interval]'),
 
         requestByView1h: |||
           topk(10,
@@ -173,12 +177,65 @@ local tbOverride = tbStandardOptions.override;
                   status=~"2.*",
                   view!~"%(adminViewRegex)s",
                 }[$__rate_interval]
-              ) > 0
+              )
             ) by (namespace, job, view), 0.001
           )
         ||| % defaultFilters,
         apiResponse4xx: std.strReplace(queries.apiResponse2xx, '2.*', '4.*'),
         apiResponse5xx: std.strReplace(queries.apiResponse2xx, '2.*', '5.*'),
+
+        apiSuccessRate: |||
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(method)s,
+                status!~"[4-5].*",
+                view!~"%(adminViewRegex)s",
+              }[1h]
+            )
+          ) by (namespace, job, view)
+          /
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(method)s,
+                view!~"%(adminViewRegex)s",
+              }[1h]
+            )
+          ) by (namespace, job, view)
+        ||| % defaultFilters,
+
+        apiSuccessRateExcluding4xx: |||
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(method)s,
+                status!~"5.*",
+                view!~"%(adminViewRegex)s",
+              }[1h]
+            )
+          ) by (namespace, job, view)
+          /
+          sum(
+            rate(
+              django_http_responses_total_by_status_view_method_total{
+                %(method)s,
+                view!~"%(adminViewRegex)s",
+              }[1h]
+            )
+          ) by (namespace, job, view)
+        ||| % defaultFilters,
+
+        apiExceptions: |||
+          sum(
+            increase(
+              django_http_exceptions_total_by_view_total{
+                %(defaultIgnoredViews)s,
+                view!~"%(adminViewRegex)s"
+              }[1h]
+            )
+          ) by (namespace, job, view)
+        ||| % defaultFilters,
 
         apiRequestLatencyP50: |||
           histogram_quantile(0.50,
@@ -188,20 +245,21 @@ local tbOverride = tbStandardOptions.override;
                   %(method)s,
                   view!~"%(adminViewRegex)s"
                 }[1h]
-              ) > 0
+              )
             ) by (namespace, job, view, le)
           )
         ||| % defaultFilters,
         apiRequestLatencyP95: std.strReplace(queries.apiRequestLatencyP50, '0.50', '0.95'),
-        apiRequestLatencyP99: std.strReplace(queries.apiRequestLatencyP50, '0.50', '0.99'),
 
         adminResponse2xx: std.strReplace(queries.apiResponse2xx, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
         adminResponse4xx: std.strReplace(queries.apiResponse4xx, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
         adminResponse5xx: std.strReplace(queries.apiResponse5xx, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
+        adminSuccessRate: std.strReplace(queries.apiSuccessRate, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
+        adminSuccessRateExcluding4xx: std.strReplace(queries.apiSuccessRateExcluding4xx, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
+        adminExceptions: std.strReplace(queries.apiExceptions, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
 
         adminRequestLatencyP50: std.strReplace(queries.apiRequestLatencyP50, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
         adminRequestLatencyP95: std.strReplace(queries.apiRequestLatencyP95, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
-        adminRequestLatencyP99: std.strReplace(queries.apiRequestLatencyP99, 'view!~"%s"' % $._config.adminViewRegex, 'view=~"%s"' % $._config.adminViewRegex),
 
         topHttpExceptionsByView1w: |||
           round(
@@ -211,7 +269,7 @@ local tbOverride = tbStandardOptions.override;
                   django_http_exceptions_total_by_view_total{
                     %(defaultIgnoredViews)s
                   }[1w]
-                ) > 0
+                )
               )
             )
           )
@@ -225,7 +283,7 @@ local tbOverride = tbStandardOptions.override;
                   django_http_exceptions_total_by_type_total{
                     %(default)s
                   }[1w]
-                ) > 0
+                )
               ) by (namespace, job, type)
             )
           )
@@ -239,7 +297,7 @@ local tbOverride = tbStandardOptions.override;
                   django_http_responses_total_by_status_view_method_total{
                     %(defaultIgnoredViews)s
                   }[1w]
-                ) > 0
+                )
               ) by (namespace, job, view)
             )
           )
@@ -254,7 +312,7 @@ local tbOverride = tbStandardOptions.override;
                     %(default)s,
                     templatename!~"%(djangoIgnoredTemplates)s"
                   }[1w]
-                ) > 0
+                )
               ) by (namespace, job, templatename)
             )
           )
@@ -268,6 +326,7 @@ local tbOverride = tbStandardOptions.override;
             'Request Volume',
             'reqps',
             queries.requestVolume,
+            description='Current request rate for the selected Django service, views, and methods.',
           ),
 
         requestSuccessRateStat:
@@ -332,6 +391,28 @@ local tbOverride = tbStandardOptions.override;
             ],
           ),
 
+        requestLatencyTimeSeries:
+          mixinUtils.dashboards.timeSeriesPanel(
+            'Request Latency',
+            's',
+            [
+              {
+                expr: queries.requestLatencyP50Summary,
+                legend: 'P50',
+              },
+              {
+                expr: queries.requestLatencyP95Summary,
+                legend: 'P95',
+              },
+              {
+                expr: queries.requestLatencyP99Summary,
+                legend: 'P99',
+                exemplar: true,
+              },
+            ],
+            description='Request latency percentiles across the selected views and methods. P95/P99 movement usually identifies slow endpoints before averages do.',
+          ),
+
         requestHttpExceptions1hStat:
           mixinUtils.dashboards.statPanel(
             'HTTP Exceptions [1h]',
@@ -372,6 +453,16 @@ local tbOverride = tbStandardOptions.override;
             queries.requestByView1h,
             '{{ view }}',
             description='Top 10 views by request volume over the last hour.',
+          ),
+
+        responseByStatusClassTimeSeries:
+          mixinUtils.dashboards.timeSeriesPanel(
+            'Response Rate by Status Class',
+            'reqps',
+            queries.responseByStatusClass,
+            '{{ status_class }}',
+            description='Response rate by status class for the selected views and methods. Rising 4xx often indicates client/API contract issues; rising 5xx indicates service-side failures.',
+            stack='normal',
           ),
 
         apiResponseTimeSeries:
@@ -418,9 +509,21 @@ local tbOverride = tbStandardOptions.override;
 
         apiRequestLatencyTable:
           mixinUtils.dashboards.tablePanel(
-            'API & Other Views Request Latency [1h]',
-            'dtdurations',
+            'API & Other Views Overview [1h]',
+            'short',
             [
+              {
+                expr: queries.apiSuccessRateExcluding4xx,
+                legend: 'Success Rate (5xx)',
+              },
+              {
+                expr: queries.apiSuccessRate,
+                legend: 'Success Rate (4xx & 5xx)',
+              },
+              {
+                expr: queries.apiExceptions,
+                legend: 'Exceptions',
+              },
               {
                 expr: queries.apiRequestLatencyP50,
                 legend: 'P50 Latency',
@@ -429,13 +532,9 @@ local tbOverride = tbStandardOptions.override;
                 expr: queries.apiRequestLatencyP95,
                 legend: 'P95 Latency',
               },
-              {
-                expr: queries.apiRequestLatencyP99,
-                legend: 'P99 Latency',
-              },
             ],
             sortBy={
-              name: 'P50 Latency',
+              name: 'P95 Latency',
               desc: true,
             },
             transformations=[
@@ -448,41 +547,51 @@ local tbOverride = tbStandardOptions.override;
               tbQueryOptions.transformation.withOptions(
                 {
                   renameByName: {
-                    job: 'Job',
-                    namespace: 'Namespace',
                     view: 'View',
-                    'Value #A': 'P50 Latency',
-                    'Value #B': 'P95 Latency',
-                    'Value #C': 'P99 Latency',
+                    'Value #A': 'Success Rate (5xx)',
+                    'Value #B': 'Success Rate (4xx & 5xx)',
+                    'Value #C': 'Exceptions',
+                    'Value #D': 'P50 Latency',
+                    'Value #E': 'P95 Latency',
                   },
                   indexByName: {
-                    namespace: 0,
-                    job: 1,
-                    view: 2,
-                    'Value #A': 3,
-                    'Value #B': 4,
-                    'Value #C': 5,
+                    view: 0,
+                    'Value #A': 1,
+                    'Value #B': 2,
+                    'Value #C': 3,
+                    'Value #D': 4,
+                    'Value #E': 5,
                   },
-                  excludeByName: {
-                    Time: true,
+                  includeByName: {
+                    view: true,
+                    'Value #A': true,
+                    'Value #B': true,
+                    'Value #C': true,
+                    'Value #D': true,
+                    'Value #E': true,
                   },
                 }
               ),
             ],
             overrides=[
-              tbOverride.byName.new('View') +
-              tbOverride.byName.withPropertiesFromOptions(
-                tbStandardOptions.withLinks(
-                  tbPanelOptions.link.withTitle('Go To View') +
-                  tbPanelOptions.link.withType('dashboard') +
-                  tbPanelOptions.link.withUrl(
-                    '/d/%s?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
-                  ) +
-                  tbPanelOptions.link.withTargetBlank(true)
-                )
-              ),
+              tbOverride.byName.new('Success Rate (4xx & 5xx)') +
+              tbOverride.byName.withPropertiesFromOptions(tbStandardOptions.withUnit('percentunit')),
+              tbOverride.byName.new('Success Rate (5xx)') +
+              tbOverride.byName.withPropertiesFromOptions(tbStandardOptions.withUnit('percentunit')),
+              tbOverride.byName.new('P50 Latency') +
+              tbOverride.byName.withPropertiesFromOptions(tbStandardOptions.withUnit('s')),
+              tbOverride.byName.new('P95 Latency') +
+              tbOverride.byName.withPropertiesFromOptions(tbStandardOptions.withUnit('s')),
             ],
-          ),
+          ) +
+          tbStandardOptions.withLinks([
+            tbPanelOptions.link.withTitle('Go To View') +
+            tbPanelOptions.link.withType('dashboard') +
+            tbPanelOptions.link.withUrl(
+              '/d/%s?var-namespace=$namespace&var-job=$job&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
+            ) +
+            tbPanelOptions.link.withTargetBlank(true),
+          ]),
 
         adminResponseTimeSeries:
           mixinUtils.dashboards.timeSeriesPanel(
@@ -525,9 +634,21 @@ local tbOverride = tbStandardOptions.override;
 
         adminRequestLatencyTable:
           mixinUtils.dashboards.tablePanel(
-            'Admin Views Request Latency [1h]',
-            'dtdurations',
+            'Admin Views Overview [1h]',
+            'short',
             [
+              {
+                expr: queries.adminSuccessRateExcluding4xx,
+                legend: 'Success Rate (5xx)',
+              },
+              {
+                expr: queries.adminSuccessRate,
+                legend: 'Success Rate (4xx & 5xx)',
+              },
+              {
+                expr: queries.adminExceptions,
+                legend: 'Exceptions',
+              },
               {
                 expr: queries.adminRequestLatencyP50,
                 legend: 'P50 Latency',
@@ -536,13 +657,9 @@ local tbOverride = tbStandardOptions.override;
                 expr: queries.adminRequestLatencyP95,
                 legend: 'P95 Latency',
               },
-              {
-                expr: queries.adminRequestLatencyP99,
-                legend: 'P99 Latency',
-              },
             ],
             sortBy={
-              name: 'P50 Latency',
+              name: 'P95 Latency',
               desc: true,
             },
             transformations=[
@@ -555,41 +672,51 @@ local tbOverride = tbStandardOptions.override;
               tbQueryOptions.transformation.withOptions(
                 {
                   renameByName: {
-                    job: 'Job',
-                    namespace: 'Namespace',
                     view: 'View',
-                    'Value #A': 'P50 Latency',
-                    'Value #B': 'P95 Latency',
-                    'Value #C': 'P99 Latency',
+                    'Value #A': 'Success Rate (5xx)',
+                    'Value #B': 'Success Rate (4xx & 5xx)',
+                    'Value #C': 'Exceptions',
+                    'Value #D': 'P50 Latency',
+                    'Value #E': 'P95 Latency',
                   },
                   indexByName: {
-                    namespace: 0,
-                    job: 1,
-                    view: 2,
-                    'Value #A': 3,
-                    'Value #B': 4,
-                    'Value #C': 5,
+                    view: 0,
+                    'Value #A': 1,
+                    'Value #B': 2,
+                    'Value #C': 3,
+                    'Value #D': 4,
+                    'Value #E': 5,
                   },
-                  excludeByName: {
-                    Time: true,
+                  includeByName: {
+                    view: true,
+                    'Value #A': true,
+                    'Value #B': true,
+                    'Value #C': true,
+                    'Value #D': true,
+                    'Value #E': true,
                   },
                 }
               ),
             ],
             overrides=[
-              tbOverride.byName.new('View') +
-              tbOverride.byName.withPropertiesFromOptions(
-                tbStandardOptions.withLinks(
-                  tbPanelOptions.link.withTitle('Go To View') +
-                  tbPanelOptions.link.withType('dashboard') +
-                  tbPanelOptions.link.withUrl(
-                    '/d/%s?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
-                  ) +
-                  tbPanelOptions.link.withTargetBlank(true)
-                )
-              ),
+              tbOverride.byName.new('Success Rate (4xx & 5xx)') +
+              tbOverride.byName.withPropertiesFromOptions(tbStandardOptions.withUnit('percentunit')),
+              tbOverride.byName.new('Success Rate (5xx)') +
+              tbOverride.byName.withPropertiesFromOptions(tbStandardOptions.withUnit('percentunit')),
+              tbOverride.byName.new('P50 Latency') +
+              tbOverride.byName.withPropertiesFromOptions(tbStandardOptions.withUnit('s')),
+              tbOverride.byName.new('P95 Latency') +
+              tbOverride.byName.withPropertiesFromOptions(tbStandardOptions.withUnit('s')),
             ],
-          ),
+          ) +
+          tbStandardOptions.withLinks([
+            tbPanelOptions.link.withTitle('Go To View') +
+            tbPanelOptions.link.withType('dashboard') +
+            tbPanelOptions.link.withUrl(
+              '/d/%s?var-namespace=$namespace&var-job=$job&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
+            ) +
+            tbPanelOptions.link.withTargetBlank(true),
+          ]),
 
         topHttpExceptionsByView1wTable:
           mixinUtils.dashboards.tablePanel(
@@ -608,35 +735,29 @@ local tbOverride = tbStandardOptions.override;
               tbQueryOptions.transformation.withOptions(
                 {
                   renameByName: {
-                    job: 'Job',
-                    namespace: 'Namespace',
                     view: 'View',
+                    Value: 'Exceptions',
                   },
                   indexByName: {
-                    namespace: 0,
-                    job: 1,
-                    view: 2,
+                    view: 0,
+                    Value: 1,
                   },
-                  excludeByName: {
-                    Time: true,
+                  includeByName: {
+                    view: true,
+                    Value: true,
                   },
                 }
               ),
             ],
-            overrides=[
-              tbOverride.byName.new('View') +
-              tbOverride.byName.withPropertiesFromOptions(
-                tbStandardOptions.withLinks(
-                  tbPanelOptions.link.withTitle('Go To View') +
-                  tbPanelOptions.link.withType('dashboard') +
-                  tbPanelOptions.link.withUrl(
-                    '/d/%s?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
-                  ) +
-                  tbPanelOptions.link.withTargetBlank(true)
-                )
-              ),
-            ]
-          ),
+          ) +
+          tbStandardOptions.withLinks([
+            tbPanelOptions.link.withTitle('Go To View') +
+            tbPanelOptions.link.withType('dashboard') +
+            tbPanelOptions.link.withUrl(
+              '/d/%s?var-namespace=$namespace&var-job=$job&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
+            ) +
+            tbPanelOptions.link.withTargetBlank(true),
+          ]),
 
         topHttpExceptionsByType1wTable:
           mixinUtils.dashboards.tablePanel(
@@ -655,17 +776,16 @@ local tbOverride = tbStandardOptions.override;
               tbQueryOptions.transformation.withOptions(
                 {
                   renameByName: {
-                    job: 'Job',
-                    namespace: 'Namespace',
                     type: 'Type',
+                    Value: 'Exceptions',
                   },
                   indexByName: {
-                    namespace: 0,
-                    job: 1,
-                    type: 2,
+                    type: 0,
+                    Value: 1,
                   },
-                  excludeByName: {
-                    Time: true,
+                  includeByName: {
+                    type: true,
+                    Value: true,
                   },
                 }
               ),
@@ -689,35 +809,29 @@ local tbOverride = tbStandardOptions.override;
               tbQueryOptions.transformation.withOptions(
                 {
                   renameByName: {
-                    job: 'Job',
-                    namespace: 'Namespace',
                     view: 'View',
+                    Value: 'Responses',
                   },
                   indexByName: {
-                    namespace: 0,
-                    job: 1,
-                    view: 2,
+                    view: 0,
+                    Value: 1,
                   },
-                  excludeByName: {
-                    Time: true,
+                  includeByName: {
+                    view: true,
+                    Value: true,
                   },
                 }
               ),
             ],
-            overrides=[
-              tbOverride.byName.new('View') +
-              tbOverride.byName.withPropertiesFromOptions(
-                tbStandardOptions.withLinks(
-                  tbPanelOptions.link.withTitle('Go To View') +
-                  tbPanelOptions.link.withType('dashboard') +
-                  tbPanelOptions.link.withUrl(
-                    '/d/%s?var-namespace=${__data.fields.Namespace}&var-job=${__data.fields.Job}&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
-                  ) +
-                  tbPanelOptions.link.withTargetBlank(true)
-                )
-              ),
-            ],
-          ),
+          ) +
+          tbStandardOptions.withLinks([
+            tbPanelOptions.link.withTitle('Go To View') +
+            tbPanelOptions.link.withType('dashboard') +
+            tbPanelOptions.link.withUrl(
+              '/d/%s?var-namespace=$namespace&var-job=$job&var-view=${__data.fields.View}' % $._config.dashboardIds['django-requests-by-view']
+            ) +
+            tbPanelOptions.link.withTargetBlank(true),
+          ]),
 
         topTemplates1wTable:
           mixinUtils.dashboards.tablePanel(
@@ -736,17 +850,16 @@ local tbOverride = tbStandardOptions.override;
               tbQueryOptions.transformation.withOptions(
                 {
                   renameByName: {
-                    job: 'Job',
-                    namespace: 'Namespace',
                     templatename: 'Template Name',
+                    Value: 'Responses',
                   },
                   indexByName: {
-                    namespace: 0,
-                    job: 1,
-                    templatename: 2,
+                    templatename: 0,
+                    Value: 1,
                   },
-                  excludeByName: {
-                    Time: true,
+                  includeByName: {
+                    templatename: true,
+                    Value: true,
                   },
                 }
               ),
@@ -786,9 +899,25 @@ local tbOverride = tbStandardOptions.override;
           startY=4,
         ) +
         [
-          row.new('API Views & Other') +
+          row.new('Request Health') +
           row.gridPos.withX(0) +
           row.gridPos.withY(9) +
+          row.gridPos.withW(24) +
+          row.gridPos.withH(1),
+        ] +
+        grid.wrapPanels(
+          [
+            panels.responseByStatusClassTimeSeries,
+            panels.requestLatencyTimeSeries,
+          ],
+          panelWidth=12,
+          panelHeight=8,
+          startY=10,
+        ) +
+        [
+          row.new('API Views & Other') +
+          row.gridPos.withX(0) +
+          row.gridPos.withY(18) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
@@ -799,12 +928,12 @@ local tbOverride = tbStandardOptions.override;
           ],
           panelWidth=12,
           panelHeight=10,
-          startY=10,
+          startY=19,
         ) +
         [
           row.new('Admin Views') +
           row.gridPos.withX(0) +
-          row.gridPos.withY(20) +
+          row.gridPos.withY(29) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
@@ -815,12 +944,12 @@ local tbOverride = tbStandardOptions.override;
           ],
           panelWidth=12,
           panelHeight=10,
-          startY=21,
+          startY=30,
         ) +
         [
           row.new('Weekly Breakdown') +
           row.gridPos.withX(0) +
-          row.gridPos.withY(31) +
+          row.gridPos.withY(40) +
           row.gridPos.withW(24) +
           row.gridPos.withH(1),
         ] +
@@ -833,18 +962,18 @@ local tbOverride = tbStandardOptions.override;
           ],
           panelWidth=12,
           panelHeight=8,
-          startY=32,
+          startY=41,
         );
 
       mixinUtils.dashboards.bypassDashboardValidation +
       dashboard.new(
         'Django / Requests / Overview',
       ) +
-      dashboard.withDescription('A dashboard that monitors Django which focuses on giving a overview for requests. %s' % dashboardUtil.dashboardDescriptionLink) +
+      dashboard.withDescription('A request-focused Django dashboard with traffic mix, success rates, latency percentiles, ranked view tables, exceptions, and links into per-view drilldowns. Use it to find which views are driving load or user-facing errors. %s' % dashboardUtil.dashboardDescriptionLink) +
       dashboard.withUid($._config.dashboardIds[dashboardName]) +
       dashboard.withTags($._config.tags) +
       dashboard.withTimezone('utc') +
-      dashboard.withEditable(true) +
+      dashboard.withEditable(false) +
       dashboard.time.withFrom('now-6h') +
       dashboard.time.withTo('now') +
       dashboard.withVariables(variables) +

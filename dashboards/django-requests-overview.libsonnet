@@ -184,6 +184,17 @@ local tbOverride = tbStandardOptions.override;
         apiResponse4xx: std.strReplace(queries.apiResponse2xx, '2.*', '4.*'),
         apiResponse5xx: std.strReplace(queries.apiResponse2xx, '2.*', '5.*'),
 
+        apiRequestRate1h: |||
+          sum(
+            rate(
+              django_http_requests_total_by_view_transport_method_total{
+                %(method)s,
+                view!~"%(adminViewRegex)s"
+              }[1h]
+            )
+          ) by (namespace, job, view)
+        ||| % defaultFilters,
+
         apiSuccessRate: |||
           sum(
             rate(
@@ -513,6 +524,10 @@ local tbOverride = tbStandardOptions.override;
             'short',
             [
               {
+                expr: queries.apiRequestRate1h,
+                legend: 'RPS',
+              },
+              {
                 expr: queries.apiSuccessRateExcluding4xx,
                 legend: 'Success Rate (5xx)',
               },
@@ -534,7 +549,7 @@ local tbOverride = tbStandardOptions.override;
               },
             ],
             sortBy={
-              name: 'P95 Latency',
+              name: 'RPS',
               desc: true,
             },
             transformations=[
@@ -548,11 +563,12 @@ local tbOverride = tbStandardOptions.override;
                 {
                   renameByName: {
                     view: 'View',
-                    'Value #A': 'Success Rate (5xx)',
-                    'Value #B': 'Success Rate (4xx & 5xx)',
-                    'Value #C': 'Exceptions',
-                    'Value #D': 'P50 Latency',
-                    'Value #E': 'P95 Latency',
+                    'Value #A': 'RPS',
+                    'Value #B': 'Success Rate (5xx)',
+                    'Value #C': 'Success Rate (4xx & 5xx)',
+                    'Value #D': 'Exceptions',
+                    'Value #E': 'P50 Latency',
+                    'Value #F': 'P95 Latency',
                   },
                   indexByName: {
                     view: 0,
@@ -561,6 +577,7 @@ local tbOverride = tbStandardOptions.override;
                     'Value #C': 3,
                     'Value #D': 4,
                     'Value #E': 5,
+                    'Value #F': 6,
                   },
                   includeByName: {
                     view: true,
@@ -569,11 +586,14 @@ local tbOverride = tbStandardOptions.override;
                     'Value #C': true,
                     'Value #D': true,
                     'Value #E': true,
+                    'Value #F': true,
                   },
                 }
               ),
             ],
             overrides=[
+              tbOverride.byName.new('RPS') +
+              tbOverride.byName.withPropertiesFromOptions(tbStandardOptions.withUnit('reqps')),
               tbOverride.byName.new('Success Rate (4xx & 5xx)') +
               tbOverride.byName.withPropertiesFromOptions(tbStandardOptions.withUnit('percentunit')),
               tbOverride.byName.new('Success Rate (5xx)') +
